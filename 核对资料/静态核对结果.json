@@ -1,0 +1,231 @@
+{
+  "checkedAt": "2026-10-16T09:51:58.884Z",
+  "timezone": "Asia/Shanghai",
+  "scope": "Static handoff integrity only; no local prototype execution or browser tests.",
+  "protectedRoots": [
+    {
+      "root": "v2.3.1-可批注原型",
+      "files": 78,
+      "unchanged": true
+    },
+    {
+      "root": "Gemini-UI美化交接-20261016",
+      "files": 84,
+      "unchanged": true
+    },
+    {
+      "root": "v2.3-可批注原型",
+      "files": 70,
+      "unchanged": true
+    },
+    {
+      "root": "版本档案",
+      "files": 181,
+      "unchanged": true
+    }
+  ],
+  "protectedFiles": 413,
+  "oldZip": {
+    "bytes": 1561075,
+    "path": "Gemini-UI美化交接-20261016.zip",
+    "sha256": "a778beea01464a7d00b84310f83308d02c9fb23d7985416dfa5a8b8a2ea46bac",
+    "unchanged": true
+  },
+  "copiedProject": {
+    "files": 78,
+    "byteIdentical": true
+  },
+  "txtChecks": [
+    {
+      "file": "02-页面与样式源码.txt",
+      "sha256": "f75e046ce83410183b0ce630c42cd137fcc63e69a76515955531057b5bae0273",
+      "unchanged": true,
+      "sourceFiles": [
+        "打开原型.html",
+        "styles.css",
+        "v2.1.css",
+        "v2.2.css",
+        "v2.3.css",
+        "v2.3-dark.css",
+        "v2.3.1.css"
+      ]
+    },
+    {
+      "file": "03-组件与交互源码.txt",
+      "sha256": "80fb012a1721683438825350b51744b6f399a045427de63d442ed40fcb273415",
+      "unchanged": true,
+      "sourceFiles": [
+        "v2.2-components.js",
+        "v2.3-components.js",
+        "v2.2-features.js",
+        "v2.3-features.js",
+        "review.js",
+        "app.js"
+      ]
+    },
+    {
+      "file": "04-页面数据源码.txt",
+      "sha256": "5db1c764d157477630b7dbe2c2a6ec45b2c40e8f1f5332cc0dc9a04d24a3cfac",
+      "unchanged": true,
+      "sourceFiles": [
+        "data.js",
+        "v2.2-data.js",
+        "v2.3-data.js",
+        "版本标识.json"
+      ]
+    }
+  ],
+  "sourceBlocks": 17,
+  "cssLoadOrder": [
+    "styles.css",
+    "v2.1.css",
+    "v2.2.css",
+    "v2.3.css",
+    "v2.3-dark.css",
+    "v2.3.1.css"
+  ],
+  "parsedClassicScripts": [
+    "app.js",
+    "data.js",
+    "review-seed.js",
+    "review.js",
+    "v2.2-components.js",
+    "v2.2-data.js",
+    "v2.2-features.js",
+    "v2.3-components.js",
+    "v2.3-data.js",
+    "v2.3-features.js",
+    "vendor/lucide.min.js",
+    "vendor/vue.global.prod.js"
+  ],
+  "inheritedMetadata": {
+    "pages": 51,
+    "tools": 9,
+    "courses": 9,
+    "note": "基线元数据继承值，非本轮逐路由运行检查"
+  },
+  "screenshots": [
+    {
+      "id": "R01",
+      "file": "参考截图/R01.jpg",
+      "sha256": "e7a71a4ad4acd3a13c7d1d545c5914e2059910c307ade20e60b3ee6375055255",
+      "checked": true
+    },
+    {
+      "id": "R02",
+      "file": "参考截图/R02.jpg",
+      "sha256": "2b4f0bc404aa4065978e777d681d4ea9bc226621ff063aa369f8bf85f91314c5",
+      "checked": true
+    },
+    {
+      "id": "R03",
+      "file": "参考截图/R03.jpg",
+      "sha256": "48b48bcb0f8e61c39105c892032f0ceb8ff95e70435d1e19b2f2c478c6a28a44",
+      "checked": true
+    },
+    {
+      "id": "R04",
+      "file": "参考截图/R04.jpg",
+      "sha256": "ee344bcdfde25451582b1c9e76370df6a23c40c59f818f4bbee37790abcbd9f2",
+      "checked": true
+    },
+    {
+      "id": "R05",
+      "file": "参考截图/R05.jpg",
+      "sha256": "9ed96cf9d46f60d276dd794489573e81124f083ee153adc4f4a7b9eaea7ae257",
+      "checked": true
+    },
+    {
+      "id": "R06",
+      "file": "参考截图/R06.jpg",
+      "sha256": "d9d67019624a0d3e7906b5594e070ae7c33d71f34486ccbc697bef6fe30f42e5",
+      "checked": true
+    },
+    {
+      "id": "R07",
+      "file": "参考截图/R07.jpg",
+      "sha256": "33b8e1a06fc60f2494a7bbc04c975dd2c67bb646c68aa38c96b67fb371f674a1",
+      "checked": true
+    },
+    {
+      "id": "R08",
+      "file": "参考截图/R08.jpg",
+      "sha256": "506f88a647bd9f0d3e705b3742867136d6bcd7be95d8edd9a5eae1f585c35014",
+      "checked": true
+    },
+    {
+      "id": "R09",
+      "file": "参考截图/R09.jpg",
+      "sha256": "cae46f7ed6e441015f021a9cad60ab56b1a74ccf5d1af41d9969465526549a74",
+      "checked": true
+    },
+    {
+      "id": "R10",
+      "file": "参考截图/R10.jpg",
+      "sha256": "32f85248d5daa55dbf8aeb6079b34e80cc3ed83fbdc7f08d3773f9e4ded15b4c",
+      "checked": true
+    },
+    {
+      "id": "R11",
+      "file": "参考截图/R11.jpg",
+      "sha256": "5cff40a300e6a3036a1193442cebbec2bd3b4632c222c76af9bcaff5d7562574",
+      "checked": true
+    },
+    {
+      "id": "R12",
+      "file": "参考截图/R12.jpg",
+      "sha256": "c136260a728a0b7ccfd3d9d8939dda99364f1efcb9416ed1c421c713fc0d537b",
+      "checked": true
+    },
+    {
+      "id": "R13",
+      "file": "参考截图/R13.jpg",
+      "sha256": "38c0d4374b71d2251781833533c5492eeb23c18a0a1a58f3dca2f0e9da719bc9",
+      "checked": true
+    },
+    {
+      "id": "R14",
+      "file": "参考截图/R14.jpg",
+      "sha256": "20b79258bc962a4ae7e398ee3defbe0e40bd117da190c3444656cc143b0dc2cb",
+      "checked": true
+    }
+  ],
+  "publishedScreenshotCount": 14,
+  "overviewImages": 1,
+  "redactionRegions": 8,
+  "screenshotPrivacyReview": "已人工查看发布图；8 处不透明遮挡，原始采集图不打包。不是自动 OCR 或隐私认证。",
+  "templates": [
+    {
+      "file": "画布示例/avatar-template.json",
+      "schemaValid": true,
+      "validator": "PowerShell Test-Json (local draft-07 schema)",
+      "id": "template-avatar-v1",
+      "nodes": 5,
+      "edges": 4,
+      "acyclic": true,
+      "typedEdgesValid": true,
+      "consentsDefaultFalse": true,
+      "runReady": false
+    },
+    {
+      "file": "画布示例/video-template.json",
+      "schemaValid": true,
+      "validator": "PowerShell Test-Json (local draft-07 schema)",
+      "id": "template-video-v1",
+      "nodes": 5,
+      "edges": 4,
+      "acyclic": true,
+      "typedEdgesValid": true,
+      "consentsDefaultFalse": true,
+      "runReady": false
+    }
+  ],
+  "requirementsWritten": 28,
+  "scannedTexts": 82,
+  "secretScan": "有限文本模式未匹配；图片另经人工查看，不是全面秘密/安全审计。",
+  "localPrototypeStarted": false,
+  "localBrowserTestsRun": false,
+  "automatedAppTestsRun": false,
+  "localLinkChecks": 77,
+  "zipVerification": "单独生成后逐项 SHA-256 核对，结果见同级 ZIP核对回执.json，不以内嵌回执产生递归指纹。"
+}

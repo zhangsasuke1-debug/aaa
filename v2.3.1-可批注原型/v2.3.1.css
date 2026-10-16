@@ -1,0 +1,24 @@
+/* Equal side tracks keep navigation centered independently of account width. */
+.site-header .site-navigation {
+  justify-content: center;
+}
+
+@container site (min-width: 901px) {
+  .site-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+  }
+
+  .site-header > .brand {
+    justify-self: start;
+  }
+
+  .site-header > .site-navigation {
+    justify-self: center;
+  }
+
+  .site-header > .site-account {
+    justify-self: end;
+    margin-left: 0;
+  }
+}

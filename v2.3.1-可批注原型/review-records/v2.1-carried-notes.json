@@ -1,0 +1,264 @@
+{
+  "schema": "teacher-review-notes/1",
+  "projectId": "teacher-workspace-review",
+  "reviewVersion": "v2.1-20261012",
+  "sourceVersion": "v2.0-20261009",
+  "sourceFile": "v2.0-original-notes.json",
+  "carriedAt": "2026-10-12T11:42:40.617Z",
+  "notes": [
+    {
+      "id": "n-31d0e57c-80f5-42f3-a122-6683d97a641a",
+      "page": "/tool/grade",
+      "pageTitle": "作业批改 · 填写",
+      "anchor": "tool-navigation",
+      "label": "工具快捷导航",
+      "excerpt": "教学备课 练习出题 课件制作 作业批改",
+      "body": "需要再加上：\nHTML制作\nAI数字人\nAI视频\n（作业批改在最下面，新增的三个在课件制作下面，按照我这个顺序）\n工作台里的常用工具也是按照这个同步调整。",
+      "category": "内容",
+      "status": "open",
+      "deleted": false,
+      "x": 0.6759776536312849,
+      "y": 0.755626022913257,
+      "originVersion": "v2.0-20261009",
+      "context": {
+        "chapter": 0,
+        "workFilter": "all",
+        "search": ""
+      },
+      "createdAt": "2026-10-09T15:38:50.293Z",
+      "updatedAt": "2026-10-09T15:41:53.172Z",
+      "history": [
+        {
+          "action": "创建",
+          "at": "2026-10-09T15:38:50.293Z",
+          "body": "需要再加上：\nHTML制作\nAI数字人\nAI视频\n（作业批改在最下面，新增的三个在课件制作下面，按照我这个顺序）",
+          "category": "内容",
+          "status": "open"
+        },
+        {
+          "action": "编辑",
+          "at": "2026-10-09T15:41:53.172Z",
+          "body": "需要再加上：\nHTML制作\nAI数字人\nAI视频\n（作业批改在最下面，新增的三个在课件制作下面，按照我这个顺序）\n工作台里的常用工具也是按照这个同步调整。",
+          "category": "内容",
+          "status": "open"
+        },
+        {
+          "action": "V2.1 调整，待复核",
+          "at": "2026-10-12T11:42:40.617Z",
+          "body": "需要再加上：\nHTML制作\nAI数字人\nAI视频\n（作业批改在最下面，新增的三个在课件制作下面，按照我这个顺序）\n工作台里的常用工具也是按照这个同步调整。",
+          "category": "内容",
+          "status": "open"
+        }
+      ],
+      "originalLocation": {
+        "page": "/tool/grade",
+        "pageTitle": "作业批改 · 填写",
+        "anchor": "tool-navigation",
+        "label": "工具快捷导航",
+        "excerpt": "教学备课 练习出题 课件制作 作业批改",
+        "x": 0.6759776536312849,
+        "y": 0.755626022913257,
+        "context": {
+          "chapter": 0,
+          "workFilter": "all",
+          "search": ""
+        }
+      },
+      "implementation": [
+        {
+          "version": "v2.1-20261012",
+          "at": "2026-10-12T11:42:40.617Z",
+          "state": "pending-user-review",
+          "summary": "新增 HTML 制作、AI 数字人、AI 视频的填写页与结果页；工具侧栏、工作台、首页功能入口及作品分类共用七项工具排序，作业批改放在最后。"
+        }
+      ]
+    },
+    {
+      "id": "n-b2a842a8-de68-4233-93af-f9fe5598901c",
+      "page": "/tool/grade",
+      "pageTitle": "作业批改 · 填写",
+      "anchor": "main-navigation",
+      "label": "主导航",
+      "excerpt": "工作台 AI 对话 我的作品 3 使用教程",
+      "body": "这里不要有使用教程\n可以把使用教程换到上面",
+      "category": "内容",
+      "status": "open",
+      "deleted": false,
+      "x": 0.5921787709497207,
+      "y": 0.8658307744796998,
+      "originVersion": "v2.0-20261009",
+      "context": {
+        "chapter": 0,
+        "workFilter": "all",
+        "search": ""
+      },
+      "createdAt": "2026-10-09T15:40:25.329Z",
+      "updatedAt": "2026-10-09T15:41:05.871Z",
+      "history": [
+        {
+          "action": "创建",
+          "at": "2026-10-09T15:40:25.329Z",
+          "body": "这里不要有使用教程",
+          "category": "内容",
+          "status": "open"
+        },
+        {
+          "action": "编辑",
+          "at": "2026-10-09T15:41:05.871Z",
+          "body": "这里不要有使用教程\n可以把使用教程换到上面",
+          "category": "内容",
+          "status": "open"
+        },
+        {
+          "action": "V2.1 调整，待复核",
+          "at": "2026-10-12T11:42:40.617Z",
+          "body": "这里不要有使用教程\n可以把使用教程换到上面",
+          "category": "内容",
+          "status": "open"
+        }
+      ],
+      "originalLocation": {
+        "page": "/tool/grade",
+        "pageTitle": "作业批改 · 填写",
+        "anchor": "main-navigation",
+        "label": "主导航",
+        "excerpt": "工作台 AI 对话 我的作品 3 使用教程",
+        "x": 0.5921787709497207,
+        "y": 0.8658307744796998,
+        "context": {
+          "chapter": 0,
+          "workFilter": "all",
+          "search": ""
+        }
+      },
+      "implementation": [
+        {
+          "version": "v2.1-20261012",
+          "at": "2026-10-12T11:42:40.617Z",
+          "state": "pending-user-review",
+          "summary": "使用教程已移至顶部主导航，从教学工具侧栏移除；原 main-navigation 区域 ID 保留，并映射到顶部主导航。"
+        }
+      ]
+    },
+    {
+      "id": "n-8a678d69-9ce5-4d2f-a683-b4a09c803397",
+      "page": "/welcome",
+      "pageTitle": "展示首页",
+      "anchor": "page-root",
+      "label": "页面整体",
+      "excerpt": "2026 年 10 月 9 日 · 星期五 开始今天的教学工作 我的工作台 输入教学任务 通用助手 对话示例 常用工具 从具体任务开始 教学备课 教学目标、课堂活动与课时安排 练习出题 随堂练习、单元检测与参考解析 课件制作 课件大纲、页面内容与讲解提示 作业批改 评价维度、改进建议与个性评语 最近作品 3 全部作品 示例 《背影》教学设计 语文·八年级 教",
+      "body": "刚进去网站我觉的可以是一个宏观的页面，比如一个地球什么的然后，里面包含这我们的功能（介绍下功能能干啥），然后中间有个简单的介绍，然后就是可以立即进入（立即体验等等都可以，看怎么合适），可以借鉴下图1（文件地址：\"D:\\桌面\\系统规划\\页面借鉴\\图1.png\"）",
+      "category": "内容",
+      "status": "open",
+      "deleted": false,
+      "x": 0.92,
+      "y": 0.08,
+      "originVersion": "v2.0-20261009",
+      "context": {
+        "chapter": 0,
+        "workFilter": "all",
+        "search": ""
+      },
+      "createdAt": "2026-10-11T15:58:59.242Z",
+      "updatedAt": "2026-10-11T15:58:59.242Z",
+      "history": [
+        {
+          "action": "创建",
+          "at": "2026-10-11T15:58:59.242Z",
+          "body": "刚进去网站我觉的可以是一个宏观的页面，比如一个地球什么的然后，里面包含这我们的功能（介绍下功能能干啥），然后中间有个简单的介绍，然后就是可以立即进入（立即体验等等都可以，看怎么合适），可以借鉴下图1（文件地址：\"D:\\桌面\\系统规划\\页面借鉴\\图1.png\"）",
+          "category": "内容",
+          "status": "open"
+        },
+        {
+          "action": "V2.1 调整，待复核",
+          "at": "2026-10-12T11:42:40.617Z",
+          "body": "刚进去网站我觉的可以是一个宏观的页面，比如一个地球什么的然后，里面包含这我们的功能（介绍下功能能干啥），然后中间有个简单的介绍，然后就是可以立即进入（立即体验等等都可以，看怎么合适），可以借鉴下图1（文件地址：\"D:\\桌面\\系统规划\\页面借鉴\\图1.png\"）",
+          "category": "内容",
+          "status": "open"
+        }
+      ],
+      "originalLocation": {
+        "page": "/home",
+        "pageTitle": "工作台",
+        "anchor": "page-root",
+        "label": "页面整体",
+        "excerpt": "2026 年 10 月 9 日 · 星期五 开始今天的教学工作 我的工作台 输入教学任务 通用助手 对话示例 常用工具 从具体任务开始 教学备课 教学目标、课堂活动与课时安排 练习出题 随堂练习、单元检测与参考解析 课件制作 课件大纲、页面内容与讲解提示 作业批改 评价维度、改进建议与个性评语 最近作品 3 全部作品 示例 《背影》教学设计 语文·八年级 教",
+        "x": 0.92,
+        "y": 0.08,
+        "context": {
+          "chapter": 0,
+          "workFilter": "all",
+          "search": ""
+        }
+      },
+      "implementation": [
+        {
+          "version": "v2.1-20261012",
+          "at": "2026-10-12T11:42:40.617Z",
+          "state": "pending-user-review",
+          "summary": "新增 /welcome 为默认展示首页，使用本地地球图片、中央品牌介绍、立即体验及七项可点击功能入口；手机端顺序排列。批注现定位到新首页，原 /home 位置保存在原始位置记录中。"
+        }
+      ]
+    },
+    {
+      "id": "n-a29cd6ee-1e31-44fd-bd16-a52843327a57",
+      "page": "/library",
+      "pageTitle": "我的作品",
+      "anchor": "brand",
+      "label": "网站名称与标识",
+      "excerpt": "教师 AI 教学工作台",
+      "body": "左边这些（教师AI到访客预览，这些都放到上面——参考图1（地址为：\"D:\\桌面\\系统规划\\页面借鉴\\图1.png\"）\n进入到工作台之后可以显现这些教学工具等等内容，可以参考图2（地址为：\"D:\\桌面\\系统规划\\页面借鉴\\图2.png\"）",
+      "category": "排版",
+      "status": "open",
+      "deleted": false,
+      "x": 0.7541899441340782,
+      "y": 0.6963402571711177,
+      "originVersion": "v2.0-20261009",
+      "context": {
+        "chapter": 0,
+        "workFilter": "all",
+        "search": ""
+      },
+      "createdAt": "2026-10-11T16:02:26.144Z",
+      "updatedAt": "2026-10-11T16:02:26.144Z",
+      "history": [
+        {
+          "action": "创建",
+          "at": "2026-10-11T16:02:26.144Z",
+          "body": "左边这些（教师AI到访客预览，这些都放到上面——参考图1（地址为：\"D:\\桌面\\系统规划\\页面借鉴\\图1.png\"）\n进入到工作台之后可以显现这些教学工具等等内容，可以参考图2（地址为：\"D:\\桌面\\系统规划\\页面借鉴\\图2.png\"）",
+          "category": "排版",
+          "status": "open"
+        },
+        {
+          "action": "V2.1 调整，待复核",
+          "at": "2026-10-12T11:42:40.617Z",
+          "body": "左边这些（教师AI到访客预览，这些都放到上面——参考图1（地址为：\"D:\\桌面\\系统规划\\页面借鉴\\图1.png\"）\n进入到工作台之后可以显现这些教学工具等等内容，可以参考图2（地址为：\"D:\\桌面\\系统规划\\页面借鉴\\图2.png\"）",
+          "category": "排版",
+          "status": "open"
+        }
+      ],
+      "originalLocation": {
+        "page": "/library",
+        "pageTitle": "我的作品",
+        "anchor": "brand",
+        "label": "网站名称与标识",
+        "excerpt": "教师 AI 教学工作台",
+        "x": 0.7541899441340782,
+        "y": 0.6963402571711177,
+        "context": {
+          "chapter": 0,
+          "workFilter": "all",
+          "search": ""
+        }
+      },
+      "implementation": [
+        {
+          "version": "v2.1-20261012",
+          "at": "2026-10-12T11:42:40.617Z",
+          "state": "pending-user-review",
+          "summary": "品牌、主导航、会员和账号集中到顶部；展示首页不显示侧栏，工作台、工具、对话和作品页显示教学工具侧栏；工作区域改为灰白布局。"
+        }
+      ]
+    }
+  ]
+}

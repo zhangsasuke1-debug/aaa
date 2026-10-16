@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="教师 AI V2.3.1，导航居中与 UI 美化交接版">
+  <title>教师 AI · V2.3.1</title>
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="v2.1.css">
+  <link rel="stylesheet" href="v2.2.css">
+  <link rel="stylesheet" href="v2.3.css">
+  <link rel="stylesheet" href="v2.3-dark.css">
+  <link rel="stylesheet" href="v2.3.1.css">
+</head>
+<body>
+<div id="app" v-cloak>
+  <header class="review-bar" :inert="!!v22.dialog||!!modal||v23.imageZoom||(v23.messageOpen&&!review.mode)">
+    <div class="review-identity">
+      <span class="review-logo"><ui-icon name="PanelsTopLeft" size="18"></ui-icon></span>
+      <strong>页面评审</strong>
+      <button class="version-button" @click="openModal('versions')" title="版本记录与原版入口">V2.3.1 <ui-icon name="ChevronDown" size="12"></ui-icon></button>
+    </div>
+    <div class="mode-switch" aria-label="评审模式">
+      <button :class="{active: !review.mode}" :aria-pressed="!review.mode" @click="review.setMode(false)"><ui-icon name="MousePointer2" size="15"></ui-icon><span>浏览</span></button>
+      <button :class="{active: review.mode}" :aria-pressed="review.mode" @click="review.setMode(true)"><ui-icon name="MessageSquarePlus" size="15"></ui-icon><span>批注</span></button>
+    </div>
+    <div class="review-actions">
+      <span class="save-status" :class="{warning: review.storageError}"><span class="status-dot"></span>{{ review.storageError ? '未持久保存' : '本机保存' }}</span>
+      <button class="bar-action page-map-button" @click="openModal('map')" aria-label="页面清单" title="页面清单"><ui-icon name="Waypoints" size="16"></ui-icon><span>页面清单</span></button>
+      <button class="bar-action note-count" :class="{active:review.panel}" @click="review.panel = !review.panel" :aria-expanded="review.panel" aria-label="查看批注" title="查看批注"><ui-icon name="MessagesSquare" size="16"></ui-icon><span>{{ review.total }}</span></button>
+      <div class="export-wrap">
+        <button class="export-button" @click="review.exportMenu = !review.exportMenu" :aria-expanded="review.exportMenu" aria-label="导出批注" title="导出批注"><ui-icon name="Download" size="16"></ui-icon><span>导出批注</span><ui-icon name="ChevronDown" size="12"></ui-icon></button>
+        <div v-if="review.exportMenu" class="export-menu">
+          <button @click="review.exportNotes('json')"><ui-icon name="FileJson" size="18"></ui-icon><span>JSON 备份与交付</span></button>
+          <button @click="review.exportNotes('md')"><ui-icon name="FileText" size="18"></ui-icon><span>Markdown 阅读版</span></button>
+          <label class="import-label"><ui-icon name="Upload" size="18"></ui-icon><span>导入批注 JSON</span><input type="file" accept=".json,application/json" @change="review.importNotes"></label>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div v-if="review.storageError" class="storage-warning" role="alert">{{ review.storageError }}</div>
+  <div class="workspace" :class="{'review-open': review.panel}">
+    <div class="website-surface" :class="{annotating:review.mode,'welcome-surface':kind==='welcome'}" @click.capture="review.capture" @keydown.capture="review.captureKey">
+      <header class="site-header" :inert="!!v22.dialog||!!modal||v23.imageZoom||(v23.messageOpen&&!review.mode)">
+        <a href="#/welcome" class="brand" v-bind="review.attrs('brand','顶部品牌与网站标识')"><span class="brand-mark"><ui-icon name="NotebookPen" size="23"></ui-icon></span><strong>教师 AI</strong></a>
+        <nav class="site-navigation" aria-label="主导航" v-bind="review.attrs('main-navigation','顶部主导航与使用教程')">
+          <a v-for="link in topLinks" :key="link.route" :href="'#'+link.route" :class="{active:route===link.route||((link.route==='/course'||link.route==='/resources'||link.route==='/notices')&&route.startsWith(link.route+'/'))}" :aria-current="route===link.route?'page':null">{{ link.label }}</a>
+        </nav>
+        <v23-header-actions :state="v23" :review="review" :logged-in="loggedIn" :navigate="navigate" :logout="logout" :preferences="preferences" :open-modal="openModal"></v23-header-actions>
+      </header>
+      <div class="site-body" :class="{'tutorial-open':v23.tutorialOpen&&(kind==='tool'||kind==='result')}" :inert="!!v22.dialog||!!modal||v23.imageZoom||(v23.messageOpen&&!review.mode)">
+      <button v-if="navOpen&&showSidebar" class="nav-scrim" aria-label="关闭教学工具导航" @click="navOpen=false"></button>
+      <aside v-if="showSidebar" class="sidebar" :class="{open:navOpen}">
+        <div class="sidebar-heading"><span>教学空间</span><button class="icon-button sidebar-close" @click="navOpen=false" aria-label="收起教学工具" title="收起"><ui-icon name="X" size="17"></ui-icon></button></div>
+        <button class="new-chat" @click="newChat" v-bind="review.attrs('new-chat','新建任务会话入口')"><ui-icon name="Plus" size="18"></ui-icon>新建任务会话</button>
+        <div class="nav-section-label">教学工具</div>
+        <nav class="tool-nav" aria-label="教学工具" v-bind="review.attrs('tool-navigation','工具快捷导航')">
+          <a v-for="t in tasks" :key="t.id" :href="'#/tool/'+t.id" :class="{active:(kind==='tool'||kind==='result')&&task.id===t.id}" :aria-current="(kind==='tool'||kind==='result')&&task.id===t.id?'page':null"><ui-icon :name="t.icon" size="18"></ui-icon>{{ t.name }}</a>
+        </nav>
+        <nav class="sidebar-utilities" aria-label="我的教学空间"><a href="#/chat" :class="{active:kind==='chat'}"><ui-icon name="MessagesSquare" size="18"></ui-icon>任务会话</a><a href="#/library" :class="{active:kind==='library'}"><ui-icon name="FolderOpen" size="18"></ui-icon>我的作品</a></nav>
+        <session-sidebar :state="v22" :review="review"></session-sidebar>
+        <a class="sidebar-home" href="#/welcome"><ui-icon name="ArrowUpLeft" size="17"></ui-icon>返回首页</a>
+      </aside>
+      <main class="app-main">
+        <header v-if="kind!=='welcome'" class="app-header">
+          <div class="breadcrumb"><button v-if="showSidebar" class="icon-button mobile-menu" @click="navOpen=!navOpen" aria-label="打开教学工具" :aria-expanded="navOpen" title="教学工具"><ui-icon name="Menu"></ui-icon></button><a href="#/home" class="breadcrumb-root">教学空间</a><ui-icon name="ChevronRight" size="14"></ui-icon><strong>{{ pageTitle }}</strong></div>
+          <div class="header-meta" v-bind="review.attrs('page-header','页眉与状态')"><span class="demo-label"><span></span>示例预览</span><a href="#/course" class="icon-button" aria-label="使用教程" title="使用教程"><ui-icon name="CircleHelp" size="19"></ui-icon></a></div>
+        </header>
+        <div class="page-scroll">
+          <div class="page-content" :class="{'wide-page':kind==='result','chat-page-content':kind==='chat','welcome-content':kind==='welcome'}" v-bind="review.attrs('page-root','页面整体')">
+            <template v-if="kind==='welcome'">
+              <section class="welcome-hero" v-bind="review.attrs('welcome-hero','地球主视觉与九项功能')">
+                <img class="earth-backdrop" src="assets/earth.jpg" alt="从太空俯瞰地球，海洋、陆地与云层清晰可见" width="2048" height="2048">
+                <div class="welcome-intro" v-bind="review.attrs('welcome-intro','首页介绍与立即体验')">
+                  <span class="welcome-kicker">让想法，走进课堂</span>
+                  <h1>教师 AI</h1>
+                  <p>从教学准备到课堂表达<br>把时间留给更有创造力的教学</p>
+                  <a href="#/home" class="welcome-cta">立即体验<ui-icon name="ArrowRight" size="18"></ui-icon></a>
+                </div>
+                <nav class="orbit-tools" aria-label="九项教学功能">
+                  <a v-for="(t,i) in tasks" :key="t.id" :href="'#/tool/'+t.id" class="orbit-tool" :class="'orbit-'+i" v-bind="review.attrs('welcome-tool-'+t.id,t.name+'功能介绍')">
+                    <span class="orbit-icon" :class="t.color"><ui-icon :name="t.icon" size="22"></ui-icon></span><div><strong>{{ t.name }}</strong><p>{{ t.description }}</p></div><ui-icon name="ArrowUpRight" size="15"></ui-icon>
+                  </a>
+                </nav>
+              </section>
+              <section class="welcome-next" v-bind="review.attrs('welcome-next','首页下方的工作台与作品入口')">
+                <div><span class="eyebrow">从一堂课的需要出发</span><h2>准备、创作、整理，都有一个起点。</h2></div>
+                <div class="welcome-next-links"><a href="#/home">进入工作台<ui-icon name="ArrowUpRight" size="17"></ui-icon></a><a href="#/library">我的作品<ui-icon name="FolderOpen" size="17"></ui-icon></a></div>
+              </section>
+            </template>
+
+            <template v-else-if="kind==='home'">
+              <section class="home-heading" v-bind="review.attrs('home-title','工作台标题与欢迎区')"><div><div class="eyebrow">{{ todayLabel }}</div><h1>开始今天的教学工作</h1></div><span class="quiet-label">我的工作台</span></section>
+              <form class="home-composer" @submit.prevent="sendChat(true)" v-bind="review.attrs('home-composer','首页输入区')">
+                <label class="sr-only" for="home-prompt">输入教学任务</label>
+                <textarea id="home-prompt" v-model="homePrompt" placeholder="例如：帮我设计《背影》的课堂活动" maxlength="3000"></textarea>
+                <chat-controls :state="v22" :review="review" :home="true"></chat-controls>
+              </form>
+              <section class="task-section">
+                <div class="section-heading" v-bind="review.attrs('task-heading','常用工具标题')"><h2>常用工具</h2><span>从具体任务开始</span></div>
+                <div class="task-grid">
+                  <a v-for="t in tasks" :key="t.id" :href="'#/tool/'+t.id" class="task-card" v-bind="review.attrs('task-'+t.id,t.name+'入口')"><div class="task-top"><span class="tool-symbol" :class="t.color"><ui-icon :name="t.icon" size="23"></ui-icon></span><ui-icon name="ArrowUpRight" size="17"></ui-icon></div><h3>{{ t.name }}</h3><p>{{ t.description }}</p></a>
+                </div>
+              </section>
+              <div class="home-lower">
+                <section class="recent-section" v-bind="review.attrs('recent-works','最近作品区')">
+                  <div class="section-heading"><h2>最近作品 <span class="count-text">{{ allWorks.length }}</span></h2><a href="#/library" class="text-link">全部作品<ui-icon name="ArrowRight" size="14"></ui-icon></a></div>
+                  <div class="recent-grid">
+                    <a v-for="w in allWorks.slice(0,3)" :key="w.id" :href="'#/result/'+w.task" @click.prevent="openWork(w)" class="work-card" v-bind="review.attrs('work-'+w.id,w.title+'作品卡片')"><div class="work-image"><img :src="w.image||taskById(w.task).image" :alt="w.title+'排版预览'" width="640" height="400"><span class="image-tag">{{ w.sample?'示例':'本机' }}</span></div><div class="work-info"><h3>{{ w.title }}</h3><p>{{ w.subject }}<span>·</span>{{ w.grade }}</p><div class="work-footer"><span>{{ taskById(w.task).output }}</span><span>{{ w.date.slice(5).replace('-',' / ') }}</span></div></div></a>
+                  </div>
+                  <div v-if="!allWorks.length" class="inline-empty">暂无作品<a href="#/tool/prep" class="text-link">开始一份教学设计<ui-icon name="ArrowRight" size="15"></ui-icon></a></div>
+                </section>
+                <section class="tutorial-aside" v-bind="review.attrs('home-tutorials','首页教程推荐')"><div class="section-heading"><h2>使用教程</h2><a href="#/course" class="icon-button small" aria-label="全部教程" title="全部教程"><ui-icon name="ArrowUpRight" size="17"></ui-icon></a></div><a v-for="(c,i) in courses.slice(0,3)" :key="c.id" :href="'#/course/'+c.id" class="tutorial-row"><span class="tutorial-number">0{{ i+1 }}</span><div><h3>{{ c.name }}</h3><p>{{ c.category }}<span>·</span>{{ c.minutes }}</p></div><ui-icon name="ChevronRight" size="15"></ui-icon></a><a class="all-tutorials" href="#/course">查看全部教程<ui-icon name="ArrowRight" size="15"></ui-icon></a></section>
+              </div>
+              <footer class="content-footer">内容示例仅用于页面评审，正式使用前需由教师审核。</footer>
+            </template>
+
+            <template v-else-if="kind==='tool'">
+              <div class="page-heading" v-bind="review.attrs('task-title','任务标题与流程')"><div><a class="back-link" href="#/home"><ui-icon name="ArrowLeft" size="15"></ui-icon>工作台</a><div class="tool-title-line"><h1><span class="title-symbol" :class="task.color"><ui-icon :name="task.icon" size="24"></ui-icon></span>{{ task.name }}</h1><button class="tool-tutorial-button" @click="v23.toggleTutorial" :aria-expanded="v23.tutorialOpen" v-bind="review.attrs('tutorial-entry','对应工具使用教程入口')"><ui-icon name="BookOpenCheck" size="17"></ui-icon>使用教程</button></div></div><div v-if="!v23.isStudio" class="steps"><span class="current"><b>1</b>填写信息</span><i></i><span><b>2</b>查看结果</span></div></div>
+              <image-studio v-if="task.id==='image'" :state="v23" :form="form" :review="review" :save="saveWork" :saved="hasSaved"></image-studio>
+              <voice-studio v-else-if="task.id==='voice'" :state="v23" :form="form" :review="review" :base="v22" :save="saveWork" :saved="hasSaved"></voice-studio>
+              <div v-else class="task-layout">
+                <form class="task-form" @submit.prevent="previewResult">
+                  <grading-form v-if="task.id==='grade'" :form="form" :state="v22" :review="review"></grading-form>
+                  <template v-else>
+                  <section v-if="!mediaTask" class="form-section" v-bind="review.attrs('basic-information','学段、年级与学科')"><h2><span class="section-index">01</span>基础信息</h2><scope-fields :form="form" :state="v22"></scope-fields></section>
+                  <section class="form-section" v-bind="review.attrs('task-parameters','主题与专属参数')">
+                    <h2><span class="section-index">{{ mediaTask?'01':'02' }}</span>{{ task.id==='grade'?'作业信息':task.id==='avatar'?'口播内容':task.id==='video'?'短片内容':'任务内容' }}</h2>
+                    <label>{{ task.id==='html'?'知识点':mediaTask?'作品主题':'课题 / 主题' }} <span class="required">*</span><input v-model="form.topic" maxlength="100" required :aria-invalid="!!formError" aria-describedby="form-error"></label>
+                    <label v-if="task.id==='avatar'" class="spaced-field" v-bind="review.attrs('avatar-script','口播讲稿输入')">口播讲稿 <span class="required">*</span><textarea v-model="form.script" rows="7" maxlength="3000" required></textarea><span class="field-caption">{{ form.script.length }} / 3000 字</span></label>
+                    <label v-if="task.id==='video'" class="spaced-field" v-bind="review.attrs('video-prompt','教学短片画面描述')">画面描述 <span class="required">*</span><textarea v-model="form.prompt" rows="5" maxlength="3000" required></textarea></label>
+                    <fieldset v-if="task.id==='html'" class="option-fieldset webpage-types" v-bind="review.attrs('html-types','教学互动网页类型')"><legend>作品类型</legend><div class="filter-choices"><label v-for="item in ['教学动画','教学游戏','互动课件','课堂测验','实验探究']" :key="item" :class="{active:form.webpageType===item}"><input type="radio" name="webpage-type" v-model="form.webpageType" :value="item"><span>{{ item }}</span></label></div></fieldset>
+                    <v23-task-options :task="task" :form="form" :state="v23" :base="v22"></v23-task-options>
+                  </section>
+                  <section v-if="task.id==='avatar'" class="form-section" v-bind="review.attrs('avatar-persona','示例形象选择')">
+                    <h2><span class="section-index">02</span>示例形象</h2>
+                    <fieldset class="persona-options"><legend class="sr-only">选择构图照片</legend><label v-for="person in personas" :key="person.id" :class="{selected:form.persona===person.id}"><input type="radio" v-model="form.persona" :value="person.id" name="persona"><img :src="person.image" :alt="person.name+'构图照片'" width="240" height="260"><span><strong>{{ person.name }}</strong><small>{{ person.description }}</small><ui-icon v-if="form.persona===person.id" name="CircleCheck" size="17"></ui-icon></span></label></fieldset>
+                    <p class="field-caption">照片仅作构图示例，不代表可用于真人驱动或声音克隆。</p>
+                  </section>
+                  <section v-if="task.id==='video'" class="form-section" v-bind="review.attrs('video-reference','本地参考图片')">
+                    <h2><span class="section-index">02</span>参考图片 <span class="subtle">选填</span></h2>
+                    <div class="reference-upload"><label class="attachment-button"><ui-icon name="ImagePlus" size="18"></ui-icon>选择参考图片<input type="file" accept="image/jpeg,image/png,image/webp" @change="attachReference"></label><span class="subtle">JPG / PNG / WebP · 最大 10 MB · 不上传</span></div>
+                    <div v-if="form.fileName" class="reference-preview"><img v-if="referenceImage" :src="referenceImage" alt="已选择的本地参考图"><div><strong>{{ form.fileName }}</strong><p v-if="!referenceImage">仅保留文件名，请重新选择以恢复预览。</p><button type="button" class="text-button" @click="clearReference"><ui-icon name="X" size="14"></ui-icon>移除参考图</button></div></div>
+                  </section>
+                  <section v-if="mediaTask" class="form-section" v-bind="review.attrs('media-ratio','横屏、竖屏与方形画幅')">
+                    <h2><span class="section-index">03</span>画幅</h2><fieldset class="ratio-options"><legend class="sr-only">画幅比例</legend><label v-for="ratio in ['16:9','9:16','1:1']" :key="ratio" :class="{selected:form.ratio===ratio}"><input type="radio" v-model="form.ratio" :value="ratio" name="ratio"><ui-icon :name="ratio==='16:9'?'RectangleHorizontal':ratio==='9:16'?'RectangleVertical':'Square'" size="20"></ui-icon><span>{{ ratio==='16:9'?'横屏':ratio==='9:16'?'竖屏':'方形' }} {{ ratio }}</span></label></fieldset>
+                  </section>
+                  <section class="form-section" v-bind="review.attrs('extra-requirements','补充要求与参考资料')"><h2><span class="section-index">{{ mediaTask?'04':'03' }}</span>补充要求</h2><label class="sr-only" for="requirements">补充要求</label><textarea id="requirements" v-model="form.requirements" rows="4" maxlength="3000"></textarea><requirement-tools :task="task" :form="form" :state="v22"></requirement-tools><div v-if="!mediaTask" class="attachment-row"><label class="attachment-button"><ui-icon name="Paperclip" size="16"></ui-icon>选择参考资料<input type="file" @change="attachFile"></label><span v-if="form.fileName" class="attachment-name">{{ form.fileName }}<button type="button" class="icon-button small" @click="form.fileName=''" aria-label="移除资料"><ui-icon name="X" size="14"></ui-icon></button></span></div></section>
+                  </template>
+                  <div id="form-error" v-if="formError" class="field-error" role="alert">{{ formError }}</div>
+                  <div class="form-submit" v-bind="review.attrs('task-submit','预览结果操作区')"><span><ui-icon name="Info" size="15"></ui-icon>{{ mediaTask?'仅排版预览，不生成声音或视频':'未连接 AI，下一页为固定内容样稿' }}</span><button class="primary-button" type="submit">预览样稿<ui-icon name="ArrowRight" size="16"></ui-icon></button></div>
+                </form>
+                <aside class="task-preview" v-bind="review.attrs('task-preview','填写页的结果预览')"><div class="section-heading"><h2>结果预览</h2><span class="tiny-badge">示例</span></div><img :src="task.image" :alt="task.sampleTitle+'示例预览'" width="640" height="400"><h3>{{ task.sampleTitle }}</h3><p>{{ task.sampleMeta }}</p><div class="preview-outline"><span v-for="s in task.sections" :key="s.id"><ui-icon name="Check" size="14"></ui-icon>{{ s.title }}</span></div></aside>
+              </div>
+            </template>
+
+            <template v-else-if="kind==='result'">
+              <div class="result-heading" v-bind="review.attrs('result-header','结果标题与操作')"><div><a :href="'#/tool/'+task.id" class="back-link"><ui-icon name="ArrowLeft" size="15"></ui-icon>返回修改参数</a><div class="tool-title-line"><h1>{{ resultTitle }}</h1><button class="tool-tutorial-button" @click="v23.toggleTutorial" :aria-expanded="v23.tutorialOpen" v-bind="review.attrs('tutorial-entry','对应工具使用教程入口')"><ui-icon name="BookOpenCheck" size="17"></ui-icon>使用教程</button></div><p>{{ task.sampleMeta }}<span class="tiny-badge">{{ v23.isStudio?'仅本地样例 / 参数':mediaTask?'静态样稿 · 非生成结果':'固定样稿' }}</span></p></div><div v-if="!v23.isStudio" class="result-actions"><a v-if="task.id==='html'" class="secondary-button" href="samples/classroom-quiz.html" download="认识分数-课堂互动样例.html"><ui-icon name="Download" size="16"></ui-icon>下载 HTML 样例</a><button v-else-if="!mediaTask" class="secondary-button" @click="exportResult"><ui-icon name="Download" size="16"></ui-icon>导出文本</button><button class="primary-button" @click="saveWork"><ui-icon :name="hasSaved?'Check':'FolderPlus'" size="16"></ui-icon>{{ hasSaved?'已保存':'保存样稿' }}</button></div></div>
+              <image-studio v-if="task.id==='image'" :state="v23" :form="form" :review="review" :result="true" :save="saveWork" :saved="hasSaved"></image-studio>
+              <voice-studio v-else-if="task.id==='voice'" :state="v23" :form="form" :review="review" :base="v22" :result="true" :save="saveWork" :saved="hasSaved"></voice-studio>
+              <grading-result v-else-if="task.id==='grade'" :task="task" :form="form" :state="v22" :review="review"></grading-result>
+              <template v-else-if="task.id==='html'">
+                <div class="sample-notice"><ui-icon name="Info" size="17"></ui-icon><p>固定教学互动样例：认识分数。你填写的知识点、互动形式和要求已保留，但尚未调用 AI 生成新网页。</p></div>
+                <section class="html-preview-section" v-bind="review.attrs('html-preview','可操作的课堂选择题与页面预览')">
+                  <div class="preview-toolbar"><h2>课堂页面</h2><div class="preview-devices" aria-label="页面预览尺寸"><button :class="{active:htmlPreviewMode==='desktop'}" :aria-pressed="htmlPreviewMode==='desktop'" @click="htmlPreviewMode='desktop'" title="桌面预览" aria-label="桌面预览"><ui-icon name="Monitor" size="18"></ui-icon></button><button :class="{active:htmlPreviewMode==='mobile'}" :aria-pressed="htmlPreviewMode==='mobile'" @click="htmlPreviewMode='mobile'" title="手机预览" aria-label="手机预览"><ui-icon name="Smartphone" size="18"></ui-icon></button></div><a href="samples/classroom-quiz.html" target="_blank" rel="noopener" class="icon-button" title="单独打开样例" aria-label="单独打开样例"><ui-icon name="ExternalLink" size="17"></ui-icon></a></div>
+                  <div class="html-preview-stage"><div class="html-frame" :class="{mobile:htmlPreviewMode==='mobile'}"><iframe src="samples/classroom-quiz.html" title="认识分数课堂选择题，可答题、查看解析与重新开始" :inert="review.mode" :tabindex="review.mode?-1:0"></iframe><div v-if="review.mode" class="iframe-annotation-cover" aria-hidden="true"></div></div></div>
+                </section>
+                <section class="parameter-section" v-bind="review.attrs('html-parameters','HTML 制作填写参数摘要')"><h2>本次填写</h2><dl class="parameter-list"><div><dt>教学范围</dt><dd>{{ v22.scopeMeta(form) }}</dd></div><div><dt>知识点</dt><dd>{{ form.topic }}</dd></div><div class="wide"><dt>作品设置</dt><dd>{{ v22.taskSummary(form,'html') }}</dd></div><div class="wide"><dt>补充要求</dt><dd>{{ form.requirements || '未填写' }}</dd></div></dl></section>
+              </template>
+              <template v-else-if="task.id==='avatar'">
+                <div class="sample-notice"><ui-icon name="Info" size="17"></ui-icon><p>人物照片与字幕构图示例。讲稿和画幅来自本机填写；没有合成语音、驱动口型或生成视频。</p></div>
+                <div class="media-result-layout">
+                  <section class="composition-section" v-bind="review.attrs('avatar-composition','数字人人物构图与字幕')">
+                    <div class="section-heading"><h2>人物构图</h2><span>{{ form.ratio }} · 静态照片</span></div>
+                    <div class="composition-stage"><div class="avatar-canvas" :class="{portrait:form.ratio==='9:16'}" :style="{aspectRatio:previewRatio}"><img :src="persona.image" :alt="persona.name+'构图示例照片'"><span class="media-example-badge">静态样稿</span><div class="avatar-caption" aria-live="polite">{{ activeCaption }}</div></div></div>
+                    <div class="composition-meta"><span>{{ persona.name }}</span><span>{{ form.voice }} · 未合成音频</span></div>
+                  </section>
+                  <section class="script-section" v-bind="review.attrs('avatar-script-result','口播讲稿与逐句字幕')">
+                    <div class="section-heading"><h2>讲稿与字幕</h2><span>{{ captions.length }} 句</span></div>
+                    <ol class="caption-list"><li v-for="(caption,i) in captions" :key="i"><button :class="{active:captionIndex===i}" :aria-pressed="captionIndex===i" @click="captionIndex=i"><span>{{ String(i+1).padStart(2,'0') }}</span>{{ caption }}</button></li></ol>
+                    <p v-if="!captions.length" class="subtle">尚未填写讲稿。</p>
+                    <div class="script-full"><h3>完整讲稿</h3><p>{{ form.script || '未填写' }}</p></div>
+                  </section>
+                </div>
+                <section class="parameter-section" v-bind="review.attrs('avatar-parameters','数字人参数与排版要求')"><h2>口播设定</h2><dl class="parameter-list"><div><dt>示例形象</dt><dd>{{ persona.name }}</dd></div><div><dt>声音意向</dt><dd>{{ form.voice }}</dd></div><div><dt>画幅</dt><dd>{{ form.ratio }}</dd></div><div class="wide"><dt>排版要求</dt><dd>{{ form.requirements || '未填写' }}</dd></div></dl></section>
+              </template>
+              <template v-else-if="task.id==='video'">
+                <div class="sample-notice"><ui-icon name="Info" size="17"></ui-icon><p>教学短片分镜样例，使用地球照片演示三种取景。画面不是按你的描述生成的结果，也没有可播放的视频文件。</p></div>
+                <div class="media-result-layout">
+                  <section class="video-preview-section" v-bind="review.attrs('video-frames','教学短片示例画面')">
+                    <div class="section-heading"><h2>{{ activeShot.name }}</h2><span>{{ form.ratio }} · 示例画面</span></div>
+                    <div class="composition-stage"><div class="video-canvas" :class="{portrait:form.ratio==='9:16'}" :style="{aspectRatio:previewRatio}"><img src="assets/earth.jpg" alt="地球静态分镜样例，非生成视频帧" :style="{transform:'scale('+activeShot.scale+')',objectPosition:activeShot.position}"><span class="media-example-badge">静态样稿</span><span class="shot-number">{{ String(videoShotIndex+1).padStart(2,'0') }} / 03</span></div></div>
+                    <div class="shot-selector" aria-label="示例镜头"><button v-for="(shot,i) in videoShots" :key="shot.name" @click="videoShotIndex=i" :class="{active:videoShotIndex===i}" :aria-pressed="videoShotIndex===i"><span>0{{ i+1 }}</span>{{ shot.name }}</button></div>
+                  </section>
+                  <section class="shot-description" v-bind="review.attrs('video-shots','镜头描述与时长分配')"><div class="section-heading"><h2>镜头安排</h2><span>目标 {{ form.duration }}</span></div><ol><li v-for="(shot,i) in videoShots" :key="shot.name"><span class="shot-time">{{ Math.round(parseInt(form.duration)*i/3) }}–{{ Math.round(parseInt(form.duration)*(i+1)/3) }} s</span><h3>{{ shot.name }}</h3><p>{{ shot.description }}</p></li></ol></section>
+                </div>
+                <section class="parameter-section" v-bind="review.attrs('video-parameters','视频描述、参考图与参数摘要')"><h2>本次填写</h2><dl class="parameter-list"><div><dt>目标时长</dt><dd>{{ form.duration }}</dd></div><div><dt>画幅</dt><dd>{{ form.ratio }}</dd></div><div><dt>参考图片</dt><dd>{{ form.fileName || '未选择' }}</dd></div><div class="wide"><dt>画面描述</dt><dd>{{ form.prompt || '未填写' }}</dd></div><div class="wide"><dt>补充要求</dt><dd>{{ form.requirements || '未填写' }}</dd></div></dl><img v-if="referenceImage" class="result-reference-image" :src="referenceImage" alt="本次填写的本地参考图"></section>
+              </template>
+              <template v-else>
+              <section class="parameter-section original-task-summary" v-bind="review.attrs('result-parameters','本次填写参数')"><h2>本次填写</h2><dl class="parameter-list"><div><dt>教学范围</dt><dd>{{ v22.scopeMeta(form) }}</dd></div><div><dt>主题</dt><dd>{{ form.topic }}</dd></div><div class="wide"><dt>作品设置</dt><dd>{{ v22.taskSummary(form,task.id) }}</dd></div><div class="wide"><dt>补充要求</dt><dd>{{ form.requirements||'未填写' }}</dd></div></dl></section>
+              <div class="result-layout">
+                <aside class="document-toc" v-bind="review.attrs('result-toc','结果目录')"><div class="nav-section-label">内容目录</div><button v-for="(s,i) in task.sections" :key="s.id" @click="documentSection(s.id)"><span>0{{ i+1 }}</span>{{ s.title }}</button><div class="document-note"><ui-icon name="Info" size="17"></ui-icon><p>正文为排版示例，未按所填参数生成。</p></div></aside>
+                <article class="document" v-bind="review.attrs('result-document','结果正文整体')"><div class="document-masthead"><span>{{ task.output }}</span><span>TEACHING / {{ task.id.toUpperCase() }}</span></div><h2 class="document-title">{{ task.sampleTitle }}</h2><p class="document-meta">{{ task.sampleMeta }}</p>
+                  <section v-for="s in task.sections" :key="s.id" :id="'doc-'+s.id" class="document-section" v-bind="review.attrs('result-'+s.id,s.title+'内容区')"><h3>{{ s.title }}</h3><p v-if="s.text" class="document-text">{{ s.text }}</p>
+                    <div v-if="s.steps" class="lesson-timeline"><div v-for="step in s.steps" :key="step.title" class="lesson-step"><span>{{ step.time }}</span><div><h4>{{ step.title }}</h4><p>{{ step.text }}</p></div></div></div>
+                    <div v-if="s.slides" class="slide-previews"><div v-for="slide in s.slides" :key="slide.no" class="slide-canvas" :class="slide.theme"><div class="slide-kicker">{{ slide.kicker }}</div><h4>{{ slide.title }}</h4><p v-for="line in slide.lines" :key="line">{{ line }}</p><span class="slide-number">{{ slide.no }}</span></div></div>
+                    <div v-if="s.rubric" class="rubric"><div v-for="row in s.rubric" :key="row.name"><strong>{{ row.name }}</strong><span :class="{positive:row.level==='表现较好'}">{{ row.level }}</span><p>{{ row.note }}</p></div></div>
+                  </section>
+                  <footer class="document-footer">教师 AI · 内容示例<span>V2.3.1</span></footer>
+                </article>
+              </div>
+              </template>
+            </template>
+
+            <template v-else-if="kind==='chat'">
+              <div class="chat-heading" v-bind="review.attrs('chat-header','任务会话标题与操作')"><div><h1>{{ v22.current?.title||'任务会话' }}</h1><span class="subtle">对话样例</span></div><button class="secondary-button" @click="newChat"><ui-icon name="Plus" size="16"></ui-icon>新建任务会话</button></div>
+              <div class="chat-messages" id="chat-messages" v-bind="review.attrs('chat-thread','消息内容与布局')"><div v-if="!messages.length" class="chat-empty"><span class="tool-symbol green"><ui-icon name="MessagesSquare" size="27"></ui-icon></span><h2>从一个教学问题开始</h2><button v-if="!v22.current" class="primary-button" @click="newChat">新建任务会话</button></div><div v-for="m in messages" :key="m.id" class="message-row" :class="m.role"><span v-if="m.role==='ai'" class="ai-avatar"><ui-icon name="Sparkles" size="19"></ui-icon></span><div class="message-body"><span v-if="m.role==='ai'" class="message-author">教学助手 · 样例</span><p>{{ m.text }}</p><div v-if="m.attachments?.length" class="message-attachments"><span v-for="file in m.attachments" :key="file.id"><ui-icon name="File" size="15"></ui-icon>{{ file.name }}</span></div><span v-if="m.role==='user'&&m.model" class="message-options">{{ m.model }} · {{ m.speed }}</span><a v-if="m.task" :href="'#/tool/'+m.task" class="message-link">{{ taskById(m.task).name }}<ui-icon name="ArrowUpRight" size="15"></ui-icon></a></div></div><div v-if="chatBusy" class="thinking" role="status">正在展示示例回复…</div></div>
+              <form v-if="v22.current" class="chat-composer" @submit.prevent="sendChat()" v-bind="review.attrs('chat-composer','对话输入与发送')"><label class="sr-only" for="chat-input">继续对话</label><textarea id="chat-input" v-model="chatInput" placeholder="继续补充你的想法…" maxlength="3000"></textarea><chat-controls :state="v22" :review="review" :home="false"></chat-controls></form>
+            </template>
+
+            <public-pages v-else-if="['resources','notices','not-found'].includes(kind)" :state="v22" :review="review" :route="route"></public-pages>
+            <template v-else-if="kind==='library'">
+              <div class="page-heading" v-bind="review.attrs('library-heading','作品页标题与新建入口')"><div><div class="eyebrow">我的教学空间</div><h1>我的作品 <span class="title-count">{{ allWorks.length }}</span></h1></div><a href="#/tool/prep" class="primary-button"><ui-icon name="Plus" size="17"></ui-icon>新建作品</a></div>
+              <div class="library-toolbar" v-bind="review.attrs('library-filters','作品分类与搜索')"><div class="filter-tabs"><button @click="workFilter='all'" :class="{active:workFilter==='all'}">全部</button><button v-for="t in tasks" :key="t.id" @click="workFilter=t.id" :class="{active:workFilter===t.id}">{{ t.short }}</button></div><label class="search-field"><ui-icon name="Search" size="16"></ui-icon><input v-model="search" placeholder="搜索作品" aria-label="搜索作品"><button v-if="search" class="icon-button small" @click="search=''" aria-label="清空搜索"><ui-icon name="X" size="15"></ui-icon></button></label></div>
+              <div class="library-grid" v-bind="review.attrs('library-list','作品列表')"><article v-for="w in filteredWorks" :key="w.id" class="work-card" v-bind="review.attrs('work-'+w.id,w.title+'作品卡片')"><a :href="'#/result/'+w.task" @click.prevent="openWork(w)"><div class="work-image"><img :src="w.image||taskById(w.task).image" :alt="w.title+'排版预览'" width="640" height="400"><span class="image-tag">{{ w.sample?'示例':'本机保存' }}</span></div><div class="work-info"><h3>{{ w.title }}</h3><p>{{ w.subject }}<span>·</span>{{ w.grade }}</p></div></a><div class="library-card-footer"><span>{{ w.date }}</span><button class="icon-button small" @click="removeWork(w)" :aria-label="'移除'+w.title" title="从列表移除"><ui-icon name="Trash2" size="16"></ui-icon></button></div></article></div>
+              <div v-if="!filteredWorks.length" class="empty-state"><ui-icon name="FolderSearch" size="36"></ui-icon><h2>{{ search?'没有找到相关作品':'暂无作品' }}</h2><button class="text-link" @click="search='';workFilter='all'">查看全部作品<ui-icon name="ArrowRight" size="15"></ui-icon></button></div>
+            </template>
+
+            <template v-else-if="kind==='course'&&!route.split('/')[2]">
+              <div class="page-heading" v-bind="review.attrs('course-heading','教程页标题')"><div><div class="eyebrow">教学方法与实践</div><h1>使用教程</h1></div><span class="quiet-label">{{ courses.length }} 篇图文教程</span></div>
+              <div class="course-grid"><a v-for="c in courses" :key="c.id" :href="'#/course/'+c.id" class="course-card" v-bind="review.attrs('course-'+c.id,c.name+'教程入口')"><div class="course-image"><img :src="c.image" :alt="c.name+'内容预览'" width="640" height="400"></div><div class="course-info"><span :class="['category-text',taskById(c.task).color]">{{ c.category }}</span><h2>{{ c.name }}</h2><p>{{ c.intro }}</p><div class="course-meta"><span><ui-icon name="Clock3" size="14"></ui-icon>{{ c.minutes }}</span><span>阅读教程<ui-icon name="ArrowRight" size="15"></ui-icon></span></div></div></a></div>
+            </template>
+
+            <template v-else-if="kind==='course'">
+              <div class="page-heading" v-bind="review.attrs('lesson-title','教程详情标题')"><div><a href="#/course" class="back-link"><ui-icon name="ArrowLeft" size="15"></ui-icon>全部教程</a><h1>{{ course.name }}</h1><p class="subtle">{{ course.category }} · {{ course.minutes }} · 图文教程</p></div></div>
+              <div class="lesson-layout"><nav class="chapter-nav" aria-label="教程章节" v-bind="review.attrs('lesson-chapters','章节导航')"><div class="nav-section-label">本篇目录</div><button v-for="(chapter,i) in course.chapters" :key="chapter.title" :class="{active:courseChapter===i}" @click="courseChapter=i"><span>0{{ i+1 }}</span>{{ chapter.title }}</button></nav><article class="lesson-body" v-bind="review.attrs('lesson-content','图文教程正文')"><img :src="course.image" :alt="course.name+'示例页面'" width="640" height="400"><span class="eyebrow">第 {{ courseChapter+1 }} 节 / 共 {{ course.chapters.length }} 节</span><h2>{{ course.chapters[courseChapter].title }}</h2><p>{{ course.chapters[courseChapter].body }}</p><div class="chapter-actions"><button class="secondary-button" :disabled="courseChapter===0" @click="courseChapter--"><ui-icon name="ArrowLeft" size="15"></ui-icon>上一节</button><button v-if="courseChapter<course.chapters.length-1" class="primary-button" @click="courseChapter++">下一节<ui-icon name="ArrowRight" size="15"></ui-icon></button><a v-else :href="'#/tool/'+course.task" class="primary-button">进入{{ course.category }}<ui-icon name="ArrowRight" size="15"></ui-icon></a></div></article></div>
+            </template>
+
+            <template v-else-if="kind==='mine'">
+              <div class="page-heading" v-bind="review.attrs('account-title','个人中心标题')"><div><div class="eyebrow">账户与偏好</div><h1>个人中心</h1></div></div>
+              <section class="account-overview" v-bind="review.attrs('account-overview','账号概览')"><div class="account-person"><span class="avatar large">师</span><div><h2>{{ loggedIn?'演示教师':'访客预览' }}</h2><p>{{ loggedIn?'本地演示账号':'尚未登录' }}</p></div></div><button v-if="loggedIn" class="secondary-button" @click="logout"><ui-icon name="LogOut" size="16"></ui-icon>退出演示账号</button><a v-else href="#/login" class="primary-button">进入演示账号<ui-icon name="ArrowRight" size="16"></ui-icon></a></section>
+              <div class="account-stats" v-bind="review.attrs('account-stats','会员状态、额度与作品数量')"><div><span>会员状态</span><strong>基础方案</strong><a href="#/membership" class="text-link">查看权益<ui-icon name="ChevronRight" size="14"></ui-icon></a></div><div><span>可用额度</span><strong>未接入</strong><small>额度规则待确定</small></div><div><span>本机作品</span><strong>{{ works.length }} <small>份</small></strong><a href="#/library" class="text-link">查看作品<ui-icon name="ChevronRight" size="14"></ui-icon></a></div></div>
+              <section class="settings-section" v-bind="review.attrs('account-preferences','个人偏好设置')"><h2>个人偏好</h2><label class="setting-row"><span><strong>AI 内容标识</strong><small>导出内容的标识偏好，仅本机记录</small></span><input type="checkbox" class="switch" v-model="preferences.watermark" aria-label="AI 内容标识"></label><label class="setting-row"><span><strong>自动保存偏好</strong><small>仅记录偏好，当前原型始终保留本机草稿</small></span><input type="checkbox" class="switch" v-model="preferences.autoSave" aria-label="自动保存偏好"></label></section>
+              <section class="settings-section" v-bind="review.attrs('account-services','账号相关入口')"><h2>账户服务</h2><a href="#/orders" class="setting-link"><span><ui-icon name="ReceiptText" size="19"></ui-icon>订单记录</span><ui-icon name="ChevronRight" size="17"></ui-icon></a><a href="#/course" class="setting-link"><span><ui-icon name="CircleHelp" size="19"></ui-icon>使用帮助</span><ui-icon name="ChevronRight" size="17"></ui-icon></a></section>
+            </template>
+
+            <template v-else-if="kind==='membership'">
+              <div class="page-heading" v-bind="review.attrs('membership-title','会员权益页标题')"><div><a href="#/mine" class="back-link"><ui-icon name="ArrowLeft" size="15"></ui-icon>个人中心</a><h1>会员权益</h1><p class="subtle">方案草稿 · 价格与额度尚未确定</p></div></div>
+              <div class="plan-grid"><article class="plan" v-bind="review.attrs('basic-plan','基础方案权益')"><span class="tool-symbol blue"><ui-icon name="UserRound" size="24"></ui-icon></span><h2>基础方案</h2><p>日常教学体验</p><div class="plan-price">待定 <small>/ 价格与额度</small></div><ul><li><ui-icon name="Check" size="17"></ui-icon>通用对话</li><li><ui-icon name="Check" size="17"></ui-icon>教学任务入口</li><li><ui-icon name="Check" size="17"></ui-icon>作品管理</li></ul><span class="plan-status">当前演示方案</span></article><article class="plan" v-bind="review.attrs('advanced-plan','进阶方案权益')"><span class="tool-symbol green"><ui-icon name="BadgeCheck" size="24"></ui-icon></span><h2>进阶方案</h2><p>扩展权益讨论稿</p><div class="plan-price">待定 <small>/ 价格与额度</small></div><ul><li><ui-icon name="Check" size="17"></ui-icon>基础方案全部内容</li><li><ui-icon name="Plus" size="17"></ui-icon>更高任务额度（待定）</li><li><ui-icon name="Plus" size="17"></ui-icon>更多导出格式（待定）</li></ul><span class="plan-status muted">未接入购买</span></article></div>
+            </template>
+
+            <template v-else-if="kind==='orders'">
+              <div class="page-heading" v-bind="review.attrs('orders-title','订单页标题')"><div><a href="#/mine" class="back-link"><ui-icon name="ArrowLeft" size="15"></ui-icon>个人中心</a><h1>订单记录</h1></div></div><div class="orders-table" v-bind="review.attrs('orders-list','订单表格与空状态')"><div class="orders-head"><span>订单内容</span><span>金额</span><span>时间</span><span>状态</span></div><div class="empty-state"><ui-icon name="ReceiptText" size="40"></ui-icon><h2>暂无订单记录</h2><p>原型没有真实交易</p><a href="#/membership" class="text-link">查看权益方案<ui-icon name="ArrowRight" size="15"></ui-icon></a></div></div>
+            </template>
+
+            <template v-else-if="kind==='login'">
+              <div class="login-wrap"><section class="login-panel" v-bind="review.attrs('login-panel','登录页面与流程')"><span class="brand-mark large"><ui-icon name="NotebookPen" size="33"></ui-icon></span><h1>欢迎来到教师 AI</h1><p>演示登录</p><div class="demo-account"><span class="avatar">师</span><div><strong>演示教师</strong><span>本地示例账号</span></div><ui-icon name="ShieldCheck" size="22"></ui-icon></div><button class="primary-button full" @click="login">进入演示账号<ui-icon name="ArrowRight" size="17"></ui-icon></button><a href="#/home" class="text-link">以访客身份返回工作台</a><div class="login-note"><ui-icon name="Info" size="16"></ui-icon>不收集手机号，不发送短信，不创建真实账号。</div></section></div>
+            </template>
+          </div>
+        </div>
+      </main>
+      <v23-tutorial v-if="kind==='tool'||kind==='result'" :state="v23" :review="review" :task="task"></v23-tutorial>
+      </div>
+      <v22-dialog :state="v22" :review="review" :keys="dialogKeys"></v22-dialog>
+      <v23-overlays :state="v23" :review="review" :keys="dialogKeys"></v23-overlays>
+    </div>
+
+    <aside v-if="review.panel" class="review-panel" aria-label="页面批注" :inert="!!v22.dialog||!!modal||v23.imageZoom||(v23.messageOpen&&!review.mode)">
+      <header class="notes-heading"><div><ui-icon name="MessagesSquare" size="19"></ui-icon><h2>页面批注</h2><span class="tiny-badge">{{ review.total }}</span></div><button class="icon-button" @click="review.panel=false" aria-label="收起批注面板" title="收起批注面板"><ui-icon name="PanelRightClose" size="19"></ui-icon></button></header>
+      <div class="review-page-picker"><label for="review-page">当前页面</label><select id="review-page" :value="route" @change="navigate($event.target.value)"><optgroup v-for="group in groups" :key="group" :label="group"><option v-for="p in pages.filter(p=>p.group===group)" :key="p.route" :value="p.route">{{ p.title }}</option></optgroup></select></div>
+      <div class="notes-scroll">
+        <form v-if="review.draft" class="note-editor" @submit.prevent="review.save">
+          <div class="editor-target"><span class="target-icon"><ui-icon name="Crosshair" size="18"></ui-icon></span><div><small>{{ review.draft.pageTitle }}</small><strong>{{ review.draft.label }}</strong></div></div>
+          <fieldset class="category-picker"><legend class="sr-only">意见类别</legend><label v-for="category in review.categories" :key="category" :class="{active:review.draft.category===category}"><input type="radio" v-model="review.draft.category" :value="category" name="category">{{ category }}</label></fieldset>
+          <label class="sr-only" for="note-body">你的修改意见</label><textarea id="note-body" v-model="review.draft.body" rows="6" maxlength="5000" placeholder="写下你的想法…" :aria-invalid="!!review.error" aria-describedby="note-error"></textarea>
+          <div v-if="review.error" id="note-error" class="field-error" role="alert">{{ review.error }}</div>
+          <div class="editor-footer"><span>{{ review.draft.body.length }} / 5000</span><button type="button" class="text-button" @click="review.abandonDraft">取消</button><button class="primary-button small-button" type="submit"><ui-icon name="Check" size="15"></ui-icon>保存批注</button></div>
+        </form>
+        <div class="notes-controls"><div class="scope-switch"><button @click="review.scope='page'" :class="{active:review.scope==='page'}">本页 {{ review.countOnPage }}</button><button @click="review.scope='all'" :class="{active:review.scope==='all'}">全部 {{ review.total }}</button></div><select v-model="review.status" aria-label="筛选批注状态"><option value="active">全部状态</option><option value="open">待复核 / 调整</option><option value="resolved">用户已确认</option><option value="trash">回收站</option></select></div>
+        <div v-if="!review.visible.length" class="notes-empty"><div class="empty-note-icon"><ui-icon name="MessageSquarePlus" size="30"></ui-icon></div><h3>{{ review.status==='trash'?'回收站为空':'这里还没有批注' }}</h3><p>{{ review.mode?'选择一个页面区域':'切换批注模式，记录你的想法' }}</p><button class="secondary-button" @click="review.pageNote"><ui-icon name="Plus" size="15"></ui-icon>整页意见</button></div>
+        <article v-for="note in review.visible" :key="note.id" class="note-card" :class="{selected:review.selected===note.id,resolved:note.status==='resolved'}">
+          <div class="note-card-top"><span class="note-number">{{ review.number(note) }}</span><span class="note-category">{{ note.category }}</span><span class="note-state">{{ note.deleted?'已删除':note.status==='resolved'?'用户已确认':note.implementation?.length?'待你复核':'待调整' }}</span><button v-if="!note.deleted" class="icon-button small" @click="review.locate(note)" title="定位到页面区域" aria-label="定位批注"><ui-icon name="Crosshair" size="16"></ui-icon></button></div>
+          <button class="note-target" @click="review.locate(note)">{{ note.pageTitle }}<ui-icon name="ChevronRight" size="12"></ui-icon>{{ note.label }}</button>
+          <p class="note-body">{{ note.body }}</p>
+          <div v-for="(entry,i) in note.implementation" :key="i" class="note-implementation"><strong>{{ entry.version.split('-')[0].toUpperCase() }} 调整记录</strong><p>{{ entry.summary }}</p></div>
+          <details class="note-origin"><summary>编号与原始位置</summary><code>{{ note.id }}</code><p>{{ note.originVersion }}</p><p v-if="note.originalLocation">{{ note.originalLocation.pageTitle }} · {{ note.originalLocation.page }} · {{ note.originalLocation.anchor }}</p></details>
+          <div class="note-meta"><span>{{ review.time(note.updatedAt) }}</span><span>{{ note.originVersion.split('-')[0].toUpperCase() }}</span></div>
+          <div class="note-card-actions"><button v-if="note.deleted" class="text-button" @click="review.restore(note)"><ui-icon name="Undo2" size="15"></ui-icon>恢复批注</button><template v-else><button class="icon-button small" @click="review.edit(note)" aria-label="编辑批注" title="编辑"><ui-icon name="Pencil" size="15"></ui-icon></button><button class="icon-button small" @click="review.remove(note)" aria-label="删除批注" title="移入回收站"><ui-icon name="Trash2" size="15"></ui-icon></button><button class="resolve-button" @click="review.toggle(note)"><ui-icon :name="note.status==='resolved'?'RotateCcw':'Check'" size="14"></ui-icon>{{ note.status==='resolved'?'重新打开':'确认已调整' }}</button></template><button class="icon-button small" @click="review.historyId=review.historyId===note.id?null:note.id" aria-label="批注修改历史" title="修改历史"><ui-icon name="History" size="15"></ui-icon></button></div>
+          <div v-if="review.historyId===note.id" class="note-history"><div v-for="(entry,i) in note.history" :key="i"><strong>{{ entry.action }} <small>{{ review.time(entry.at) }}</small></strong><p>{{ entry.body }}</p></div></div>
+        </article>
+      </div>
+      <footer class="notes-footer"><button class="text-button" @click="review.pageNote"><ui-icon name="Plus" size="16"></ui-icon>整页意见</button><span>{{ review.storageError?'请立即导出':review.savedAt?'已保存 '+review.savedAt:'本机存储 · 可导出' }}</span></footer>
+    </aside>
+  </div>
+  <div v-if="review.outline" class="target-outline" :style="{left:review.outline.left+'px',top:review.outline.top+'px',width:review.outline.width+'px',height:review.outline.height+'px'}"></div>
+  <button v-for="pin in review.pins" :key="pin.id" class="annotation-pin" :class="{resolved:pin.status==='resolved'}" :style="{left:pin.x+'px',top:pin.y+'px'}" @click="review.locate(review.notes.find(n=>n.id===pin.id))" :aria-label="'批注 '+pin.number+'：'+pin.label" :title="'批注 '+pin.number">{{ pin.number }}</button>
+  <div v-if="toastText" class="toast" role="status"><ui-icon name="Info" size="18"></ui-icon>{{ toastText }}</div>
+  <div v-if="modal" class="modal-backdrop" @click.self="closeModal">
+    <section class="modal" :class="{'map-modal':modal==='map'}" role="dialog" aria-modal="true" aria-labelledby="modal-title" @keydown="dialogKeys">
+      <header><div><span class="eyebrow">{{ modal==='map'?'PAGE DIRECTORY':modal==='contact'?'CONTACT':'VERSION HISTORY' }}</span><h2 id="modal-title">{{ modal==='map'?'页面清单与跳转':modal==='contact'?'联系客服':'可回溯版本' }}</h2></div><button class="icon-button" @click="closeModal" aria-label="关闭窗口" data-autofocus><ui-icon name="X"></ui-icon></button></header>
+      <div v-if="modal==='contact'" class="contact-placeholder"><ui-icon name="Headset" size="32"></ui-icon><h3>暂未配置客服信息</h3><p>当前是本地页面原型，没有在线客服或真实联系方式。</p></div>
+      <div v-if="modal==='map'" class="map-body"><div class="map-entries"><button @click="navigate('/welcome')"><ui-icon name="Globe" size="18"></ui-icon>展示首页</button><button @click="navigate('/home')"><ui-icon name="LayoutDashboard" size="18"></ui-icon>工作台</button><span class="subtle">{{ pages.length }} 个页面</span></div><div class="map-flow" v-for="t in tasks" :key="t.id"><span class="tool-symbol" :class="t.color"><ui-icon :name="t.icon" size="21"></ui-icon></span><strong>{{ t.name }}</strong><button @click="navigate('/home')">工作台入口</button><ui-icon name="ArrowRight" size="15"></ui-icon><button @click="navigate('/tool/'+t.id)">填写信息</button><ui-icon name="ArrowRight" size="15"></ui-icon><button @click="navigate('/result/'+t.id)">结果页面</button></div><div class="map-other"><h3>其他页面</h3><div><button v-for="p in pages.filter(p=>p.group!=='入口'&&p.group!=='任务流程')" :key="p.route" @click="navigate(p.route)"><ui-icon :name="p.icon" size="17"></ui-icon>{{ p.title }}<ui-icon name="ArrowUpRight" size="14"></ui-icon></button></div></div></div>
+      <div v-else-if="modal==='versions'" class="version-body">
+        <article class="version-entry current"><span class="version-dot"></span><div><div class="version-entry-title"><h3>V2.3.1 · 导航居中</h3><span>当前</span></div><time>2026-10-16</time><p>基于 V2.3 调整顶部主导航位置，保留九项教学工具。用户已确认 33 条批注均已修改；本次导航调整尚待查看，不代表正式上线验收。</p><div class="version-links"><a href="版本说明.md" target="_blank" rel="noopener"><ui-icon name="GitBranch" size="15"></ui-icon>本轮版本记录</a><a href="review-records/页面批注-v2.2-20261013-2026-10-13-20-17-42.json" download><ui-icon name="FileJson" size="15"></ui-icon>原始 33 条批注</a></div></div></article>
+        <article class="version-entry"><span class="version-dot"></span><div><div class="version-entry-title"><h3>V2.3 · 九项教学工具</h3></div><time>2026-10-13</time><p>图片与音频工作区、教学表单、顶部消息及外观、账号菜单和工具内教程。原版和冻结档案保留于原项目。</p><div class="version-links"><a href="基线记录/版本说明.md" target="_blank" rel="noopener"><ui-icon name="FileText" size="15"></ui-icon>V2.3 原版记录</a></div></div></article>
+        <article class="version-entry"><span class="version-dot"></span><div><div class="version-entry-title"><h3>V2.2 · 用户端调整</h3></div><time>2026-10-13</time><p>资源广场、全国各地比赛通知、独立任务会话与实用教学表单。原版和冻结档案保留于原项目。</p><div class="version-links"><a href="review-records/v2.2-版本说明.md" target="_blank" rel="noopener"><ui-icon name="FileText" size="15"></ui-icon>V2.2 版本记录</a><a href="review-records/页面批注-v2.1-20261012-2026-10-13-17-34-22.json" download><ui-icon name="FileJson" size="15"></ui-icon>原始 26 条批注</a></div></div></article>
+        <article class="version-entry"><span class="version-dot"></span><div><div class="version-entry-title"><h3>V2.1 · 首页与七项工具</h3></div><time>2026-10-12</time><p>工作版保留于原项目，尚无冻结快照和 ZIP，未随本次源码包分发。</p></div></article>
+        <article class="version-entry"><span class="version-dot"></span><div><div class="version-entry-title"><h3>V2.0 · 可批注评审版</h3></div><time>2026-10-09</time><p>任务填写、结果与教程详情；区域批注及导入导出。历史档案保留于原项目。</p></div></article>
+        <article class="version-entry"><span class="version-dot"></span><div><div class="version-entry-title"><h3>V1 · 原始基础版</h3></div><time>保留用户提供文件</time><p>原始文件及冻结档案保持不变，保留于原项目。</p></div></article>
+        <div class="version-footnote"><ui-icon name="LockKeyhole" size="17"></ui-icon><p>V2.3.1 使用独立本机存储，不覆盖旧版数据。历史批注保留原始状态，与用户本次确认记录分开保存；浏览器新批注仍需单独导出。</p></div>
+      </div>
+    </section>
+  </div>
+</div>
+<noscript>此原型需要浏览器启用 JavaScript。请使用 Chrome 或 Edge 打开。</noscript>
+<script src="vendor/vue.global.prod.js"></script>
+<script src="vendor/lucide.min.js"></script>
+<script src="data.js"></script>
+<script src="v2.2-data.js"></script>
+<script src="v2.3-data.js"></script>
+<script src="review-seed.js"></script>
+<script src="review.js"></script>
+<script src="v2.2-features.js"></script>
+<script src="v2.2-components.js"></script>
+<script src="v2.3-features.js"></script>
+<script src="v2.3-components.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

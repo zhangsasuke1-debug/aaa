@@ -1,0 +1,342 @@
+{
+  "checkedAt": "2026-10-16T09:51:58.825Z",
+  "method": "人工细化规格 + 28 项文本存在性检查；非语义正确性证明",
+  "requirements": [
+    {
+      "id": "REQ-01",
+      "requirement": "不改原型、保留旧包与源码",
+      "document": "00-开始这里.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "未改副本",
+        "旧 V2.3.1",
+        "ZIP"
+      ]
+    },
+    {
+      "id": "REQ-02",
+      "requirement": "六来源参考/应用/排除",
+      "document": "05-参考图谱与取舍.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "A6API",
+        "匠邦",
+        "WorkBuddy",
+        "VoxCPM",
+        "Yunbay",
+        "FlowCanva",
+        "不参考什么"
+      ]
+    },
+    {
+      "id": "REQ-03",
+      "requirement": "多时间与选中/展开状态、历史限制",
+      "document": "08-截图索引.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "R01",
+        "R02",
+        "R09",
+        "R10",
+        "R11",
+        "历史",
+        "高级参数"
+      ]
+    },
+    {
+      "id": "REQ-04",
+      "requirement": "悬停为用户期望而非已验证",
+      "document": "05-参考图谱与取舍.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "用户期望，非本次已验证"
+      ]
+    },
+    {
+      "id": "REQ-05",
+      "requirement": "不绕过访问控制、隐私脱敏",
+      "document": "08-截图索引.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "不绕过",
+        "不透明",
+        "卡密",
+        "余额"
+      ]
+    },
+    {
+      "id": "REQ-06",
+      "requirement": "首页动态/工作台稳定、统一设计",
+      "document": "01-Gemini美化提示词.txt",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "首页动态强",
+        "稳定",
+        "最终配色"
+      ]
+    },
+    {
+      "id": "REQ-07",
+      "requirement": "九项发现/聚焦/可交互预览",
+      "document": "06-交互规格.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "九项",
+        "focus-visible",
+        "预览内",
+        "同一交互边界"
+      ]
+    },
+    {
+      "id": "REQ-08",
+      "requirement": "触屏与明确进入",
+      "document": "06-交互规格.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "触屏",
+        "进入工具",
+        "双击"
+      ]
+    },
+    {
+      "id": "REQ-09",
+      "requirement": "九项成果与示例边界",
+      "document": "05-参考图谱与取舍.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "《背影》",
+        "示例",
+        "MP4",
+        "quiz"
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "requirement": "减少运动和静态降级",
+      "document": "06-交互规格.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "prefers-reduced-motion",
+        "低性能",
+        "静态"
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "requirement": "暂名及集中配置",
+      "document": "06-交互规格.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "暂名",
+        "单一配置",
+        "字标"
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "requirement": "导航路由参数教程批注",
+      "document": "01-Gemini美化提示词.txt",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "五项",
+        "51",
+        "9 篇教程",
+        "review.attrs",
+        "参数"
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "requirement": "可操作画布与自建模板",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "可操作画布",
+        "自建",
+        "模板复制"
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "requirement": "Vue Flow、主站不迁移、离线产物",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "Vue Flow",
+        "IIFE",
+        "不安装依赖",
+        "file://"
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "requirement": "两模板与非时间线剪辑器",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "讲稿 text",
+        "描述 text",
+        "不扩展完整时间线"
+      ]
+    },
+    {
+      "id": "REQ-16",
+      "requirement": "画布基本操作",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "重命名",
+        "撤销",
+        "重做",
+        "小地图",
+        "适配视图",
+        "导入/导出"
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "requirement": "连线类型无环及缺素材",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "严格类型",
+        "循环依赖",
+        "必需输入缺失"
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "requirement": "临时文件不得仅凭名称有效",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "needs-reselect",
+        "即使还有名字"
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "requirement": "独立画布文档不改旧格式",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "teacher-canvas/1",
+        "旧作品",
+        "批注 schema",
+        "viewport"
+      ]
+    },
+    {
+      "id": "REQ-20",
+      "requirement": "后端边界和五类接口",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "自有后端",
+        "供应商适配器",
+        "素材上传",
+        "任务提交",
+        "状态查询",
+        "取消",
+        "结果获取"
+      ]
+    },
+    {
+      "id": "REQ-21",
+      "requirement": "布局和任务分离",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "task store",
+        "移动节点不产生新任务"
+      ]
+    },
+    {
+      "id": "REQ-22",
+      "requirement": "隔离/密钥/队列/重试/幂等/授权",
+      "document": "07-画布与接口建议.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "用户隔离",
+        "密钥",
+        "异步",
+        "退避重试",
+        "幂等与扣费",
+        "授权"
+      ]
+    },
+    {
+      "id": "REQ-23",
+      "requirement": "明确模拟状态不接真接口",
+      "document": "01-Gemini美化提示词.txt",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "真实接口本轮不接",
+        "模拟",
+        "不产生真实账单"
+      ]
+    },
+    {
+      "id": "REQ-24",
+      "requirement": "消除旧版范围冲突",
+      "document": "01-Gemini美化提示词.txt",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "当前范围及旧要求冲突",
+        "不再要求",
+        "完全不变"
+      ]
+    },
+    {
+      "id": "REQ-25",
+      "requirement": "分批附件不依赖解压",
+      "document": "09-分批发送与验收清单.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "不依赖",
+        "图片附件",
+        "ZIP"
+      ]
+    },
+    {
+      "id": "REQ-26",
+      "requirement": "阶段确认与完整文件",
+      "document": "09-分批发送与验收清单.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "A 设计确认",
+        "B 首页",
+        "C 工作台",
+        "D 画布",
+        "完整文件"
+      ]
+    },
+    {
+      "id": "REQ-27",
+      "requirement": "静态和人工待验明确分开",
+      "document": "09-分批发送与验收清单.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "本轮没有启动",
+        "后续待人工验证",
+        "悬停",
+        "触屏",
+        "主题",
+        "保存恢复",
+        "错误/容量"
+      ]
+    },
+    {
+      "id": "REQ-28",
+      "requirement": "声音三模式/图片三段工作流",
+      "document": "06-交互规格.md",
+      "status": "已写入规格；不代表功能已实现或通过验收",
+      "evidenceTerms": [
+        "声音设计",
+        "可控克隆",
+        "极致克隆",
+        "设置→预览→记录"
+      ]
+    }
+  ]
+}

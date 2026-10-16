@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:teacher-canvas:document:1",
+  "title": "Teacher canvas document specification example",
+  "description": "Documentation only. Structural schema does not validate graph semantics, authorization or material readiness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "kind", "createdAt", "updatedAt", "viewport", "consents", "assets", "nodes", "edges"],
+  "properties": {
+    "schemaVersion": {"const": "teacher-canvas/1"},
+    "id": {"$ref": "#/definitions/id"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 100},
+    "kind": {"enum": ["avatar", "video", "custom"]},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"},
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "zoom"],
+      "properties": {
+        "x": {"type": "number"}, "y": {"type": "number"},
+        "zoom": {"type": "number", "minimum": 0.1, "maximum": 4}
+      }
+    },
+    "consents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content", "portrait", "voice"],
+      "properties": {
+        "content": {"type": "boolean"}, "portrait": {"type": "boolean"}, "voice": {"type": "boolean"}
+      }
+    },
+    "assets": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "name", "availability"],
+        "properties": {
+          "id": {"$ref": "#/definitions/id"},
+          "kind": {"enum": ["image", "audio", "video"]},
+          "name": {"type": "string", "minLength": 1, "maxLength": 160},
+          "availability": {"enum": ["sample", "needs-reselect", "missing"]},
+          "sampleKey": {"enum": ["presenter-a", "presenter-b", "earth"]},
+          "mime": {"type": "string", "maxLength": 100}
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "position", "data"],
+        "properties": {
+          "id": {"$ref": "#/definitions/id"},
+          "type": {"enum": ["text-source", "image-source", "voice-source", "avatar-generation", "storyboard-generation", "image-generation", "clip-generation", "result-preview"]},
+          "position": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y"],
+            "properties": {"x": {"type": "number"}, "y": {"type": "number"}}
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "parameters", "assetRefs"],
+            "properties": {
+              "label": {"type": "string", "minLength": 1, "maxLength": 100},
+              "parameters": {
+                "type": "object",
+                "maxProperties": 50,
+                "propertyNames": {"pattern": "^[a-z][a-zA-Z0-9]{0,63}$"},
+                "additionalProperties": {"$ref": "#/definitions/parameter"}
+              },
+              "assetRefs": {"type": "array", "uniqueItems": true, "maxItems": 50, "items": {"$ref": "#/definitions/id"}}
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source", "sourceHandle", "target", "targetHandle"],
+        "properties": {
+          "id": {"$ref": "#/definitions/id"},
+          "source": {"$ref": "#/definitions/id"}, "target": {"$ref": "#/definitions/id"},
+          "sourceHandle": {"$ref": "#/definitions/id"}, "targetHandle": {"$ref": "#/definitions/id"}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$"},
+    "parameter": {
+      "anyOf": [
+        {"type": "string", "maxLength": 20000},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"},
+        {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 2000}}
+      ]
+    }
+  }
+}

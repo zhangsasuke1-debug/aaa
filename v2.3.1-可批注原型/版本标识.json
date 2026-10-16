@@ -1,0 +1,32 @@
+{
+  "projectId": "teacher-workspace-review",
+  "versionId": "v2.3.1-20261016",
+  "displayVersion": "V2.3.1",
+  "date": "2026-10-16",
+  "timezone": "Asia/Shanghai",
+  "parentVersion": "v2.3-20261013",
+  "purpose": "顶部导航居中与 Gemini UI 美化源码交接",
+  "entry": "打开原型.html",
+  "defaultRoute": "/welcome",
+  "annotationSchema": "teacher-review-notes/1",
+  "annotationStoragePrefix": "teacher-workspace.v2.3.1-20261016.",
+  "carriedNotes": 33,
+  "userConfirmation": {
+    "date": "2026-10-16",
+    "statement": "33 条批注均已经修改。",
+    "scope": "记录用户本次确认，不改写历史批注原文、状态或处理记录"
+  },
+  "pages": 51,
+  "tools": 9,
+  "courses": 9,
+  "resourceSamples": 6,
+  "noticeSamples": 6,
+  "admin": false,
+  "backend": false,
+  "automatedTestsRun": false,
+  "browserInteractionTestsRun": false,
+  "screenshotSweepRun": false,
+  "countsInheritedFromParent": true,
+  "reviewStatus": "用户确认原 33 条批注均已修改；导航居中修订待查看，非正式上线验收",
+  "previousVersionArchiveStatus": "V2.1 仍未生成冻结快照、ZIP 及指纹清单，本轮不补做"
+}

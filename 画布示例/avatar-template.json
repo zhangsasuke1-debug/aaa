@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "teacher-canvas/1",
+  "id": "template-avatar-v1",
+  "name": "数字人 · 课堂导入（示例模板）",
+  "kind": "avatar",
+  "createdAt": "2026-10-16T00:00:00+08:00",
+  "updatedAt": "2026-10-16T00:00:00+08:00",
+  "viewport": {"x": 20, "y": 60, "zoom": 0.85},
+  "consents": {"content": false, "portrait": false, "voice": false},
+  "assets": [
+    {"id": "sample-presenter", "kind": "image", "name": "静态示例人物；无克隆授权", "availability": "sample", "sampleKey": "presenter-a", "mime": "image/jpeg"}
+  ],
+  "nodes": [
+    {
+      "id": "script", "type": "text-source", "position": {"x": 0, "y": 0},
+      "data": {"label": "讲稿", "parameters": {"text": "同学们，今天我们从一段细节描写走进《背影》。"}, "assetRefs": []}
+    },
+    {
+      "id": "portrait", "type": "image-source", "position": {"x": 0, "y": 240},
+      "data": {"label": "形象（仅静态示例）", "parameters": {}, "assetRefs": ["sample-presenter"]}
+    },
+    {
+      "id": "voice", "type": "voice-source", "position": {"x": 0, "y": 480},
+      "data": {"label": "声音意向", "parameters": {"mode": "design", "description": "清晰、自然的课堂讲解；并非已合成声音", "denoise": false, "normalizeText": false, "guidance": 2, "iterations": 10}, "assetRefs": []}
+    },
+    {
+      "id": "avatar-render", "type": "avatar-generation", "position": {"x": 400, "y": 240},
+      "data": {"label": "数字人视频（模拟节点）", "parameters": {"ratio": "16:9"}, "assetRefs": []}
+    },
+    {
+      "id": "preview", "type": "result-preview", "position": {"x": 800, "y": 240},
+      "data": {"label": "成果预览", "parameters": {"sampleOnly": true}, "assetRefs": []}
+    }
+  ],
+  "edges": [
+    {"id": "e-script", "source": "script", "sourceHandle": "text", "target": "avatar-render", "targetHandle": "script"},
+    {"id": "e-portrait", "source": "portrait", "sourceHandle": "image", "target": "avatar-render", "targetHandle": "portrait"},
+    {"id": "e-voice", "source": "voice", "sourceHandle": "voice", "target": "avatar-render", "targetHandle": "voice"},
+    {"id": "e-preview", "source": "avatar-render", "sourceHandle": "video", "target": "preview", "targetHandle": "video"}
+  ]
+}

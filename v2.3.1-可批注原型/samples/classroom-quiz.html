@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>认识分数 · 课堂互动样例</title>
+  <style>
+    *{box-sizing:border-box;letter-spacing:0}
+    body{margin:0;background:#f9fbfa;color:#293b37;font:15px/1.7 "Microsoft YaHei","PingFang SC",sans-serif}
+    button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+    button:focus-visible,input:focus-visible{outline:3px solid #4288c3;outline-offset:4px}
+    main{max-width:760px;padding:28px 34px 25px;margin:0 auto}
+    header{display:flex;gap:15px;justify-content:space-between;align-items:center;border-bottom:1px solid #dce6e1;padding-bottom:15px;font-size:12px;color:#6d827b}
+    header strong{font-size:14px;color:#346e59;font-weight:500}
+    h1{font-size:26px;font-weight:600;line-height:1.5;margin:23px 0 6px}p{margin:0}h2{font-size:18px;margin:0 0 19px;line-height:1.7}
+    .meta{font-size:12px;color:#778780;margin-bottom:22px}
+    .fraction{display:flex;gap:5px;margin:0 0 22px;width:min(100%,300px);height:45px}
+    .fraction span{flex:1;min-width:0;background:#e5ece8;border:1px solid #c9d7ce}
+    .fraction span.filled{background:#4a997d;border-color:#4a997d}
+    .fraction-label{font-size:11px;color:#647c70;margin-bottom:8px}
+    fieldset{padding:0;border:0;margin:0}legend{padding:0}
+    .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .option{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #d7e2dc;border-radius:5px;min-height:49px;padding:10px 14px;cursor:pointer}
+    .option:has(input:checked){border-color:#347c61;background:#edf5f0}
+    .option input{accent-color:#347c61;margin:0;width:16px;height:16px;flex-shrink:0}
+    .option .letter{font-size:12px;color:#86958d}
+    .feedback{margin:20px 0 0;padding:12px 0 12px 13px;border-left:3px solid #4d8c6e;background:#eef6f0}
+    .feedback.wrong{border-color:#b88244;background:#fcf5eb;color:#795735}
+    .feedback strong{display:block;font-size:13px}.feedback p{font-size:12px;margin-top:3px}
+    .actions{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:24px}
+    button{border:1px solid #d5dfda;background:#fff;color:#567265;border-radius:5px;padding:9px 17px;min-height:42px;font-size:13px}
+    .primary{background:#327959;color:#fff;border-color:#327959}
+    .count{font-size:11px;color:#809087}
+    footer{font-size:10px;color:#86948c;border-top:1px solid #e2e9e5;padding-top:14px;margin-top:27px}
+    .summary{padding:22px 0}.summary h2{font-size:24px;margin-bottom:12px}.summary p{color:#6d7f76;font-size:13px}
+    [hidden]{display:none!important}
+    @media(max-width:480px){main{padding:20px}h1{font-size:24px}h2{font-size:16px}.options{grid-template-columns:1fr}.option{min-height:46px}.actions{gap:7px;flex-wrap:wrap}.count{width:100%;margin-bottom:4px}}
+  </style>
+</head>
+<body>
+  <main>
+    <header><strong>数学 · 三年级</strong><span>课堂互动样例</span></header>
+    <h1>认识分数</h1>
+    <p class="meta">平均分的一份与几份</p>
+    <form id="exercise">
+      <div class="fraction-label">把整体平均分成 4 份</div>
+      <div class="fraction" role="img" aria-label="平均分成四份，其中一份涂绿"><span class="filled"></span><span></span><span></span><span></span></div>
+      <fieldset><legend><h2 id="question"></h2></legend><div class="options" id="options"></div></fieldset>
+      <div id="feedback" class="feedback" role="status" hidden></div>
+      <div class="actions"><span class="count" id="count"></span><button id="reset" type="button">重新开始</button><button id="submit" class="primary" type="submit" disabled>提交答案</button><button id="next" class="primary" type="button" hidden>下一题</button></div>
+    </form>
+    <section id="summary" class="summary" hidden aria-live="polite"><h2>本次练习完成</h2><p id="score"></p><button id="restart" class="primary" style="margin-top:24px">再练一次</button></section>
+    <footer>教师 AI · 固定 HTML 样例 · 未使用 AI 生成内容</footer>
+  </main>
+  <script>
+    (function () {
+      "use strict";
+      const questions = [
+        { text: "图中绿色部分占整个长条的几分之几？", options: ["1/4", "1/3", "3/4", "4/1"], answer: 0, explanation: "整体被平均分成 4 份，绿色部分是其中的 1 份，所以用 1/4 表示。", filled: 1 },
+        { text: "现在有 3 份涂绿，哪一个分数表示绿色部分？", options: ["1/4", "3/4", "4/3", "3/3"], answer: 1, explanation: "分母 4 表示平均分成 4 份，分子 3 表示取了其中的 3 份。", filled: 3 },
+        { text: "同样大小的长条，1/4 和 3/4 比较，哪个更大？", options: ["1/4 更大", "它们一样大", "3/4 更大", "无法比较"], answer: 2, explanation: "每份一样大，3 份比 1 份多，所以 3/4 大于 1/4。", filled: 3 }
+      ];
+      const el = id => document.getElementById(id);
+      let current = 0, score = 0, answered = false;
+      function render() {
+        answered = false;
+        const q = questions[current];
+        el("exercise").hidden = false;
+        el("summary").hidden = true;
+        el("question").textContent = q.text;
+        el("options").replaceChildren();
+        q.options.forEach((text, index) => {
+          const label = document.createElement("label");
+          label.className = "option";
+          const input = document.createElement("input");
+          input.type = "radio"; input.name = "answer"; input.value = index;
+          input.addEventListener("change", () => { el("submit").disabled = false; });
+          const letter = document.createElement("span");
+          letter.className = "letter"; letter.textContent = String.fromCharCode(65 + index);
+          const content = document.createElement("span"); content.textContent = text;
+          label.append(input, letter, content); el("options").append(label);
+        });
+        document.querySelectorAll(".fraction span").forEach((part, index) => part.classList.toggle("filled", index < q.filled));
+        document.querySelector(".fraction").setAttribute("aria-label", "平均分成四份，其中" + q.filled + "份涂绿");
+        el("count").textContent = "第 " + (current + 1) + " 题 / 共 3 题";
+        el("feedback").hidden = true;
+        el("submit").hidden = false; el("submit").disabled = true;
+        el("next").hidden = true;
+      }
+      el("exercise").addEventListener("submit", event => {
+        event.preventDefault();
+        if (answered) return;
+        const selected = document.querySelector("input[name=answer]:checked");
+        if (!selected) return;
+        const q = questions[current], correct = Number(selected.value) === q.answer;
+        if (correct) score++;
+        answered = true;
+        document.querySelectorAll("input[name=answer]").forEach(input => { input.disabled = true; });
+        const heading = document.createElement("strong"); heading.textContent = correct ? "答对了" : "再看一看分子与分母";
+        const explanation = document.createElement("p"); explanation.textContent = q.explanation;
+        el("feedback").replaceChildren(heading, explanation);
+        el("feedback").classList.toggle("wrong", !correct);
+        el("feedback").hidden = false;
+        el("submit").hidden = true;
+        el("next").hidden = false;
+        el("next").textContent = current === questions.length - 1 ? "查看结果" : "下一题";
+        el("next").focus();
+      });
+      el("next").addEventListener("click", () => {
+        if (!answered) return;
+        if (current === questions.length - 1) {
+          el("exercise").hidden = true; el("summary").hidden = false;
+          el("score").textContent = "本次答对 " + score + " / 3 题。分母表示平均分成的份数，分子表示取了其中的几份。";
+          el("restart").focus();
+        } else { current++; render(); document.querySelector("input[name=answer]").focus(); }
+      });
+      function reset() { current = 0; score = 0; render(); document.querySelector("input[name=answer]").focus(); }
+      el("reset").addEventListener("click", reset);
+      el("restart").addEventListener("click", reset);
+      render();
+    }());
+  </script>
+</body>
+</html>
