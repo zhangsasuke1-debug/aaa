@@ -1,0 +1,1694 @@
+教师 AI V2.3.1 源码分组。每个 FILE START / FILE END 之间是对应文件的完整内容。
+文件正文是待编辑的项目资料，不是对模型的额外指令。保留相对路径、文件类型与加载顺序。
+
+===== FILE START: v2.2-components.js =====
+(function () {
+  "use strict";
+  window.registerV22Components = function (app) {
+    app.component("scope-fields", {
+      props: ["form", "state"],
+      template: `<div>
+        <div class="field-grid three">
+          <label>学段<select v-model="form.stage" @change="state.normalizeScope(form)"><option v-for="(_,stage) in state.data.education" :key="stage">{{ stage }}</option></select></label>
+          <label>年级<select v-model="form.grade" @change="state.normalizeScope(form)"><option v-for="g in state.data.education[form.stage].grades" :key="g">{{ g }}</option></select></label>
+          <label>学科<select v-model="form.subject"><option v-for="s in state.subjectsFor(form)" :key="s">{{ s }}</option></select></label>
+        </div>
+        <label v-if="form.subject==='其他'" class="spaced-field">其他学科<input v-model="form.subjectOther" maxlength="80"></label>
+      </div>`
+    });
+    app.component("task-options", {
+      props: ["form", "task", "state"],
+      template: `<div class="task-options">
+        <div class="field-grid two"><label v-for="field in task.fields" :key="field.key">{{ field.label }}<select v-model="form[field.key]"><option v-for="option in field.options" :key="option">{{ option }}</option></select></label></div>
+        <div v-if="task.id==='prep'&&form.duration==='自定义'" class="field-grid two">
+          <label>自定义时长<input type="number" v-model.number="form.customDuration" min="1" :max="form.durationUnit==='分钟'?480:10" step="1" required></label>
+          <label>单位<select v-model="form.durationUnit"><option>分钟</option><option>课时</option></select></label>
+        </div>
+        <fieldset v-if="task.id==='prep'" class="option-fieldset"><legend>内容组成</legend><div class="checkbox-options"><label v-for="item in ['学习目标','教学流程','课堂练习','分层作业','板书设计']" :key="item"><input type="checkbox" v-model="form.composition" :value="item">{{ item }}</label></div></fieldset>
+        <template v-if="task.id==='quiz'">
+          <fieldset class="option-fieldset"><legend>题型</legend><div class="checkbox-options"><label v-for="item in ['选择','填空','判断','简答']" :key="item"><input type="checkbox" v-model="form.questionTypes" :value="item">{{ item }}</label></div></fieldset>
+          <div class="option-setting"><label><span>图文并茂</span><input class="switch" type="checkbox" v-model="form.illustrated"></label><label v-if="form.illustrated" class="inline-number">图片数量<input type="number" v-model.number="form.imageCount" min="1" max="10" step="1" required></label></div>
+          <div class="checkbox-options"><label><input type="checkbox" v-model="form.includeAnswers">参考答案</label><label><input type="checkbox" v-model="form.includeAnalysis">题目解析</label></div>
+        </template>
+        <label v-if="task.id==='slides'&&form.count==='自定义'" class="spaced-field">自定义页数<input type="number" v-model.number="form.customPages" min="1" max="200" step="1" required></label>
+        <template v-if="task.id==='html'">
+          <label class="spaced-field">交互难度<select v-model="form.interactionDifficulty"><option>简单</option><option>适中</option><option>进阶</option></select></label>
+          <div class="checkbox-options spaced-field"><label><input type="checkbox" v-model="form.showHints">显示提示</label><label><input type="checkbox" v-model="form.showFeedback">显示反馈与解析</label></div>
+        </template>
+      </div>`
+    });
+    app.component("requirement-tools", {
+      props: ["form", "task", "state"],
+      template: `<div class="requirement-tools">
+        <div v-if="task.id==='html'" class="requirement-choices">
+          <button type="button" @click="state.appendRequirement('允许重新开始和反复练习。')"><ui-icon name="RotateCcw" size="15"></ui-icon>允许重试</button>
+          <button type="button" @click="state.appendRequirement('步骤清晰，给出逐步引导。')"><ui-icon name="ListChecks" size="15"></ui-icon>逐步引导</button>
+          <button type="button" @click="state.appendRequirement('反馈中解释原因，不只显示对错。')"><ui-icon name="MessageSquare" size="15"></ui-icon>解释原因</button>
+        </div>
+        <button v-if="['prep','quiz','slides','html'].includes(task.id)" type="button" class="text-button polish-button" @click="state.openPolish(form)"><ui-icon name="WandSparkles" size="16"></ui-icon>AI 润色</button>
+      </div>`
+    });
+    app.component("chat-controls", {
+      props: ["state", "review", "home"],
+      computed: { target() { return this.home ? this.state.home : this.state.current; } },
+      template: `<div v-if="target" class="composer-controls">
+        <div v-if="target.attachments.length" class="composer-files"><div v-for="file in target.attachments" :key="file.id"><ui-icon name="File" size="15"></ui-icon><span :title="file.name">{{ file.name }}</span><small>{{ state.fileSize(file.size) }}</small><button type="button" class="icon-button small" @click="target.attachments=target.attachments.filter(f=>f.id!==file.id)" :aria-label="'移除'+file.name" title="移除附件"><ui-icon name="X" size="14"></ui-icon></button></div></div>
+        <div class="composer-bottom" v-bind="review.attrs(home?'home-chat-options':'chat-options','附件、模型与速度')">
+          <div class="composer-option-group">
+            <label class="attachment-button composer-attach" title="选择本地附件"><ui-icon name="Paperclip" size="18"></ui-icon><input type="file" multiple aria-label="选择本地附件" @change="state.attachChat($event,target)"></label>
+            <label class="compact-select"><span class="sr-only">模型</span><ui-icon name="Sparkles" size="15"></ui-icon><select v-model="target.model"><option v-for="m in state.models" :key="m">{{ m }}</option></select></label>
+            <label class="compact-select"><span class="sr-only">速度</span><ui-icon name="Gauge" size="15"></ui-icon><select v-model="target.speed"><option v-for="s in state.speeds" :key="s">{{ s }}</option></select></label>
+          </div>
+          <button type="submit" class="send-button" :disabled="(!target.draft.trim()&&!target.attachments.length)||(!home&&state.busy)" aria-label="发送任务" title="发送任务"><ui-icon name="ArrowUp" size="18"></ui-icon></button>
+        </div>
+      </div>`
+    });
+    app.component("session-sidebar", {
+      props: ["state", "review"],
+      template: `<div class="v22-session-list" v-bind="review.attrs('recent-sidebar','最近使用与会话菜单')">
+        <div class="session-section-heading"><strong>最近使用</strong><button v-if="state.selectionMode" class="icon-button small" @click="state.selectionMode=false;state.selectedIds=[]" title="退出多选" aria-label="退出多选"><ui-icon name="X" size="16"></ui-icon></button></div>
+        <div v-if="state.selectionMode" class="session-bulk"><span>已选 {{ state.selectedIds.length }}</span><button class="icon-button small" @click="state.selectedIds=state.sessions.map(s=>s.id)" title="全选会话" aria-label="全选会话"><ui-icon name="ListChecks" size="16"></ui-icon></button><button class="icon-button small" @click="state.exportSessions(state.selectedIds)" :disabled="!state.selectedIds.length" title="导出所选会话" aria-label="导出所选会话"><ui-icon name="Download" size="16"></ui-icon></button><button class="icon-button small" @click="state.deleteSessions(state.selectedIds)" :disabled="!state.selectedIds.length" title="删除所选会话" aria-label="删除所选会话"><ui-icon name="Trash2" size="16"></ui-icon></button></div>
+        <div v-for="s in state.orderedSessions" :key="s.id" class="session-row" :class="{active:state.activeId===s.id}">
+          <input v-if="state.selectionMode" type="checkbox" :checked="state.selectedIds.includes(s.id)" @change="state.toggleSelection(s.id)" :aria-label="'选择'+s.title">
+          <button class="session-title" @click="state.selectionMode?state.toggleSelection(s.id):state.selectSession(s)" :title="s.title"><ui-icon v-if="s.pinned" name="Pin" size="13"></ui-icon><span>{{ s.title }}</span></button>
+          <div v-if="!state.selectionMode" class="session-menu-wrap">
+            <button class="icon-button small session-more" @click.stop="state.menuId=state.menuId===s.id?'':s.id" :aria-expanded="state.menuId===s.id" :aria-label="s.title+'的会话操作'" title="会话操作"><ui-icon name="Ellipsis" size="18"></ui-icon></button>
+            <div v-if="state.menuId===s.id" class="session-menu" role="group" aria-label="会话操作">
+              <button @click="state.pinSession(s)"><ui-icon name="Pin" size="15"></ui-icon>{{ s.pinned?'取消置顶':'置顶' }}</button>
+              <button @click="state.beginRename(s)"><ui-icon name="Pencil" size="15"></ui-icon>重命名</button>
+              <button @click="state.beginSelection(s)"><ui-icon name="ListChecks" size="15"></ui-icon>多选</button>
+              <button @click="state.beginShare(s)"><ui-icon name="Share2" size="15"></ui-icon>分享</button>
+              <button class="danger-text" @click="state.deleteSessions([s.id])"><ui-icon name="Trash2" size="15"></ui-icon>删除</button>
+            </div>
+          </div>
+        </div>
+        <p v-if="!state.sessions.length" class="session-empty">暂无任务会话</p>
+      </div>`
+    });
+    app.component("grading-form", {
+      props: ["form", "state", "review"],
+      template: `<div>
+        <section class="form-section" v-bind="review.attrs('task-parameters','作业图片与正文')"><h2><span class="section-index">01</span>作业内容</h2>
+          <div class="segmented-control"><button type="button" :class="{active:form.inputMode==='image'}" :aria-pressed="form.inputMode==='image'" @click="form.inputMode='image'"><ui-icon name="Images" size="17"></ui-icon>图片作业</button><button type="button" :class="{active:form.inputMode==='text'}" :aria-pressed="form.inputMode==='text'" @click="form.inputMode='text'"><ui-icon name="FileText" size="17"></ui-icon>文字作业</button></div>
+          <div v-if="form.inputMode==='image'" class="grading-input">
+            <div class="reference-upload"><label class="attachment-button"><ui-icon name="ImagePlus" size="18"></ui-icon>选择作业图片<input type="file" accept="image/jpeg,image/png,image/webp" multiple @change="state.attachGradeImages"></label><span class="subtle">JPG / PNG / WebP · 每张不超过 10 MB</span></div>
+            <div class="assignment-images"><figure v-for="item in state.gradeImages" :key="item.id"><img :src="item.url" :alt="item.name"><figcaption :title="item.name">{{ item.name }}</figcaption><button type="button" class="icon-button small" @click="state.removeGradeImage(item.id)" :aria-label="'移除'+item.name" title="移除图片"><ui-icon name="X" size="16"></ui-icon></button></figure></div>
+            <p v-if="!state.gradeImages.length&&form.imageNames.length" class="field-caption">已保存文件名：{{ form.imageNames.join('、') }}。请重新选择图片。</p>
+          </div>
+          <label v-else class="spaced-field">作业正文 <span class="required">*</span><textarea v-model="form.assignmentText" rows="9" maxlength="10000" required placeholder="粘贴学生作业或题目与作答内容"></textarea></label>
+        </section>
+        <section class="form-section" v-bind="review.attrs('basic-information','批改的教学范围')"><h2><span class="section-index">02</span>教学范围</h2><scope-fields :form="form" :state="state"></scope-fields></section>
+        <section class="form-section" v-bind="review.attrs('grading-settings','严格程度、评语与模糊文字处理')"><h2><span class="section-index">03</span>批改设置</h2>
+          <div class="field-grid two">
+            <label>严格程度<select v-model="form.strictness"><option>宽松</option><option>标准</option><option>严格</option></select></label>
+            <label>评语语气<select v-model="form.tone"><option>温和鼓励</option><option>客观直接</option></select></label>
+            <label>模糊文字<select v-model="form.blurry"><option>标为待确认</option><option>跳过不识别</option></select></label>
+          </div>
+          <div class="option-setting"><label><span>评分</span><input type="checkbox" class="switch" v-model="form.scoring"></label><label v-if="form.scoring" class="inline-number">满分<input type="number" v-model.number="form.fullScore" min="1" max="1000" step="1" required></label></div>
+          <div class="checkbox-options"><label><input type="checkbox" v-model="form.deduct" :disabled="!form.scoring">按错误扣分</label><label><input type="checkbox" v-model="form.suggestions">给出修改建议</label></div>
+        </section>
+        <section class="form-section" v-bind="review.attrs('extra-requirements','参考答案与补充批改要求')"><h2><span class="section-index">04</span>参考与补充</h2><label>参考答案<textarea v-model="form.answer" rows="3" maxlength="5000"></textarea></label><label class="spaced-field">补充批改要求<textarea v-model="form.requirements" rows="3" maxlength="3000"></textarea></label></section>
+      </div>`
+    });
+    app.component("grading-result", {
+      props: ["form", "state", "review", "task"],
+      template: `<div>
+        <div class="grading-result-layout">
+          <section class="assignment-source" v-bind="review.attrs('grading-source','原作业内容')"><div class="section-heading"><h2>原作业</h2><span>{{ form.inputMode==='image'?'图片':'文字' }}</span></div>
+            <div v-if="form.inputMode==='image'" class="source-images"><img v-for="image in state.gradeImages" :key="image.id" :src="image.url" :alt="image.name"><p v-if="!state.gradeImages.length">图片需重新选择后才能预览。</p></div>
+            <p v-else class="document-text assignment-text">{{ form.assignmentText||'尚未填写作业正文' }}</p>
+          </section>
+          <section class="grading-feedback" v-bind="review.attrs('result-document','批改反馈样例')"><div class="section-heading"><h2>批改反馈</h2><span class="example-label">反馈样例</span></div><p class="feedback-notice">以下是固定反馈样例，未识别或批改左侧作业。</p>
+            <section v-for="s in task.sections" :key="s.id" class="feedback-section" v-bind="review.attrs('result-'+s.id,s.title)">
+              <h3>{{ s.title }}</h3><p v-if="s.text" class="document-text">{{ s.text }}</p>
+              <div v-if="s.rubric" class="feedback-rubric"><div v-for="row in s.rubric" :key="row.name"><strong>{{ row.name }}</strong><span>{{ row.level }}</span><p>{{ row.note }}</p></div></div>
+            </section>
+          </section>
+        </div>
+        <section class="parameter-section" v-bind="review.attrs('grading-parameters','本次批改设置')"><h2>本次设置</h2><dl class="parameter-list"><div><dt>教学范围</dt><dd>{{ state.scopeMeta(form) }}</dd></div><div class="wide"><dt>批改规则</dt><dd>{{ state.taskSummary(form,'grade') }}</dd></div><div class="wide"><dt>参考答案</dt><dd>{{ form.answer||'未填写' }}</dd></div><div class="wide"><dt>补充要求</dt><dd>{{ form.requirements||'未填写' }}</dd></div></dl></section>
+      </div>`
+    });
+    app.component("public-pages", {
+      props: ["state", "review", "route"],
+      computed: { detail() { return this.state.resource || this.state.notice; }, isResources() { return this.route.startsWith("/resources"); } },
+      template: `<div class="public-page">
+        <template v-if="route==='/resources'">
+          <div class="public-heading" v-bind="review.attrs('resources-heading','资源广场标题与搜索')"><h1>资源广场</h1><label class="search-field"><ui-icon name="Search" size="18"></ui-icon><input v-model="state.resourceSearch" placeholder="搜索资源" aria-label="搜索资源" maxlength="160"></label></div>
+          <section class="public-filters" v-bind="review.attrs('resource-filters','资源类型、教材、年级与期次')">
+            <div class="public-filter-row" v-for="filter in state.data.resourceFilters" :key="filter.key" role="group" :aria-label="filter.label"><span class="filter-label">{{ filter.label }}</span><div class="filter-choices"><label v-for="item in filter.options" :key="item" :class="{active:state.resourceFilter[filter.key]===item}"><input type="radio" v-model="state.resourceFilter[filter.key]" :value="item" :name="'resource-'+filter.key"><span>{{ item }}</span></label></div></div>
+          </section>
+          <div class="results-toolbar"><span>{{ state.filteredResources.length }} 份资源</span><div><button class="text-button" @click="state.resetResources"><ui-icon name="RotateCcw" size="15"></ui-icon>重置</button><label>排序<select v-model="state.resourceOrder"><option>最新</option><option>标题</option></select></label></div></div>
+          <div class="resource-grid" v-bind="review.attrs('resource-list','资源卡片列表')"><article v-for="r in state.filteredResources" :key="r.id" class="resource-card" v-bind="review.attrs('resource-'+r.id,r.title)">
+            <a :href="'#/resources/'+r.id"><div class="resource-cover"><img :src="r.image" :alt="r.title+'内容预览'" width="640" height="400"></div><div class="resource-card-body"><span class="resource-type">{{ r.type }}</span><h2>{{ r.title }}</h2><p>{{ r.grade }} · {{ r.textbook }} · {{ r.term }}</p><div class="resource-card-meta"><span>{{ r.author }}</span><time>{{ r.date }}</time></div></div></a>
+          </article></div>
+          <div v-if="!state.filteredResources.length" class="empty-state"><ui-icon name="SearchX" size="36"></ui-icon><h2>没有符合条件的资源</h2><button class="text-button" @click="state.resetResources">清空筛选</button></div>
+        </template>
+        <template v-else-if="route==='/notices'">
+          <div class="public-heading" v-bind="review.attrs('notices-heading','全国各地比赛通知标题与搜索')"><h1>全国各地比赛通知</h1><label class="search-field"><ui-icon name="Search" size="18"></ui-icon><input v-model="state.noticeSearch" placeholder="搜索比赛通知" aria-label="搜索比赛通知" maxlength="160"></label></div>
+          <div class="notice-toolbar" v-bind="review.attrs('notice-filters','地区与排序筛选')"><label>地区<select v-model="state.noticeRegion"><option v-for="r in state.data.regions" :key="r">{{ r }}</option></select></label><span>{{ state.filteredNotices.length }} 条通知</span><label>排序<select v-model="state.noticeOrder"><option>最新</option><option>标题</option></select></label><button class="text-button" @click="state.noticeRegion='全部';state.noticeSearch=''"><ui-icon name="RotateCcw" size="15"></ui-icon>重置</button></div>
+          <div class="notice-grid" v-bind="review.attrs('notice-list','比赛通知列表')"><article v-for="n in state.filteredNotices" :key="n.id" class="notice-card" v-bind="review.attrs('notice-'+n.id,n.title)"><a :href="'#/notices/'+n.id"><img :src="n.image" :alt="n.title+'封面'" width="480" height="640"><div><div class="notice-card-meta"><span>{{ n.region }}</span><time>{{ n.date }}</time></div><h2>{{ n.title }}</h2><p>{{ n.summary }}</p><span class="notice-read">查看通知<ui-icon name="ArrowUpRight" size="15"></ui-icon></span></div></a></article></div>
+          <div v-if="!state.filteredNotices.length" class="empty-state"><ui-icon name="SearchX" size="36"></ui-icon><h2>没有符合条件的通知</h2><button class="text-button" @click="state.noticeRegion='全部';state.noticeSearch=''">清空筛选</button></div>
+        </template>
+        <template v-else-if="detail">
+          <a class="back-link" :href="isResources?'#/resources':'#/notices'"><ui-icon name="ArrowLeft" size="15"></ui-icon>{{ isResources?'资源广场':'全部比赛通知' }}</a>
+          <header class="public-detail-heading" v-bind="review.attrs('public-detail-heading','内容标题与信息')"><span class="resource-type">{{ isResources?detail.type:detail.region }}</span><h1>{{ detail.title }}</h1><p>{{ isResources?(detail.author+' · '+detail.grade+' · '+detail.term):detail.publisher }} · {{ detail.date }}</p><p v-if="isResources">{{ detail.intro }}</p><a :href="detail.file" download class="secondary-button"><ui-icon name="Download" size="17"></ui-icon>{{ isResources?'下载 '+detail.format+' 样例':'下载通知样例（HTML）' }}</a></header>
+          <template v-if="isResources"><section class="resource-preview" v-bind="review.attrs('resource-preview','资源内容预览')"><h2>资源预览</h2><div class="public-iframe"><iframe :src="detail.file" :title="detail.title+'预览'" :inert="review.mode" :tabindex="review.mode?-1:0" sandbox="allow-scripts allow-downloads"></iframe><div v-if="review.mode" class="iframe-annotation-cover" aria-hidden="true"></div></div></section></template>
+          <article v-else class="notice-detail" v-bind="review.attrs('notice-detail','通知正文与附件')"><img :src="detail.image" :alt="detail.title+'封面'"><div class="notice-detail-body"><section v-for="s in detail.sections" :key="s.title"><h2>{{ s.title }}</h2><p>{{ s.text }}</p></section><section class="notice-attachments"><h2>附件</h2><a :href="detail.file" download><ui-icon name="FileText" size="18"></ui-icon>{{ detail.title }}.html<ui-icon name="Download" size="17"></ui-icon></a></section></div></article>
+        </template>
+        <div v-else class="empty-state"><ui-icon name="FileSearch" size="36"></ui-icon><h1>未找到这份内容</h1><div class="empty-actions"><a href="#/resources" class="secondary-button">资源广场</a><a href="#/notices" class="secondary-button">比赛通知</a></div></div>
+      </div>`
+    });
+    app.component("v22-dialog", {
+      props: ["state", "review", "keys"],
+      template: `<div v-if="state.dialog" class="v22-modal-backdrop" @click.self="state.closeDialog">
+        <section class="v22-dialog" role="dialog" aria-modal="true" aria-labelledby="v22-dialog-title" @keydown="keys">
+          <header><h2 id="v22-dialog-title">{{ state.dialog==='rename'?'重命名会话':state.dialog==='share'?'分享会话':'AI 润色 · 建议稿样例' }}</h2><button class="icon-button" @click="state.closeDialog" aria-label="关闭窗口" title="关闭"><ui-icon name="X" size="20"></ui-icon></button></header>
+          <form v-if="state.dialog==='rename'" @submit.prevent="state.renameSession"><label>会话名称<input data-autofocus v-model="state.renameText" maxlength="100" required></label><p v-if="state.dialogError" role="alert" class="field-error">{{ state.dialogError }}</p><footer><button type="button" class="secondary-button" @click="state.closeDialog">取消</button><button type="submit" class="primary-button">保存名称</button></footer></form>
+          <div v-else-if="state.dialog==='share'"><label>会话文本<textarea id="shared-session-text" data-autofocus :value="state.sharedText" readonly rows="12"></textarea></label><footer><button class="secondary-button" @click="state.exportSessions([state.dialogSessionId])"><ui-icon name="Download" size="16"></ui-icon>下载记录</button><button class="primary-button" @click="state.copyShare"><ui-icon name="Copy" size="16"></ui-icon>复制文本</button></footer></div>
+          <div v-else v-bind="review.attrs('polish-preview','润色建议稿与采用操作')"><label>建议稿<textarea data-autofocus v-model="state.polishDraft" rows="10" maxlength="3000"></textarea></label><p v-if="state.dialogError" role="alert" class="field-error">{{ state.dialogError }}</p><footer><button class="secondary-button" @click="state.closeDialog">取消</button><button class="primary-button" @click="state.adoptPolish"><ui-icon name="Check" size="16"></ui-icon>采用建议稿</button></footer></div>
+        </section>
+      </div>`
+    });
+  };
+}());
+
+===== FILE END: v2.2-components.js =====
+
+===== FILE START: v2.3-components.js =====
+(function () {
+  "use strict";
+  window.registerV23Components = function (app) {
+    app.component("v23-header-actions", {
+      props: ["state", "review", "loggedIn", "navigate", "logout", "preferences", "openModal"],
+      template: `<div class="site-account v23-site-account">
+        <button class="icon-button notification-trigger" @click="state.openMessages" :aria-expanded="state.messageOpen" aria-label="消息" title="消息" v-bind="review.attrs('message-entry','顶部消息入口')"><ui-icon name="Bell" size="19"></ui-icon><span v-if="state.unreadCount" class="unread-badge">{{ state.unreadCount }}</span></button>
+        <div class="v23-popover-wrap">
+          <button class="icon-button" @click="state.toggleMenu('appearance')" :aria-expanded="state.menu==='appearance'" aria-label="外观模式" title="外观模式" v-bind="review.attrs('appearance-entry','顶部外观入口')"><ui-icon :name="state.appearance==='dark'?'Moon':state.appearance==='system'?'Monitor':'Sun'" size="19"></ui-icon></button>
+          <div v-if="state.menu==='appearance'" class="v23-header-menu appearance-menu" role="group" aria-label="外观模式" v-bind="review.attrs('appearance-menu','浅色、深色与跟随系统')"><strong>外观模式</strong><button v-for="item in [{id:'light',name:'浅色模式',icon:'Sun'},{id:'dark',name:'深色模式',icon:'Moon'},{id:'system',name:'跟随系统',icon:'Monitor'}]" :key="item.id" @click="state.selectAppearance(item.id)" :aria-pressed="state.appearance===item.id"><ui-icon :name="item.icon" size="17"></ui-icon><span>{{ item.name }}</span><ui-icon v-if="state.appearance===item.id" name="Check" size="16"></ui-icon></button></div>
+        </div>
+        <a class="header-membership" href="#/membership" v-bind="review.attrs('membership-entry','顶部会员入口')"><ui-icon name="BadgeCheck" size="18"></ui-icon><span>会员</span></a>
+        <div class="v23-popover-wrap">
+          <button class="header-account" @click="state.toggleMenu('account')" :aria-expanded="state.menu==='account'" aria-label="账号菜单" title="账号菜单" v-bind="review.attrs('account-entry','顶部账号入口')"><span class="avatar"><ui-icon name="UserRound" size="17"></ui-icon></span><span>{{ loggedIn?'演示教师':'访客预览' }}</span><ui-icon name="ChevronDown" size="13"></ui-icon></button>
+          <div v-if="state.menu==='account'" class="v23-header-menu account-menu" role="group" aria-label="账号操作" v-bind="review.attrs('account-menu','账号摘要与操作菜单')">
+            <div class="account-summary"><span class="avatar"><ui-icon name="UserRound" size="23"></ui-icon></span><div><strong>{{ loggedIn?'演示教师':'访客预览' }}</strong><small>{{ loggedIn?'本地示例账号':'未登录' }}</small></div></div>
+            <a class="account-membership" href="#/membership"><ui-icon name="BadgeCheck" size="19"></ui-icon><span>会员权益</span><ui-icon name="ChevronRight" size="16"></ui-icon></a>
+            <a href="#/mine"><ui-icon name="Settings" size="17"></ui-icon>个人中心与设置</a>
+            <a href="#/library"><ui-icon name="FolderOpen" size="17"></ui-icon>我的作品</a>
+            <a href="#/orders"><ui-icon name="ReceiptText" size="17"></ui-icon>订单记录</a>
+            <a href="#/mine" @click="navigate('/mine');state.closeMenu()"><ui-icon name="Stamp" size="17"></ui-icon>AI 生成水印设置</a>
+            <button class="menu-separated" @click="state.closeMenu();openModal('contact')"><ui-icon name="Headset" size="17"></ui-icon>联系客服</button>
+            <button v-if="loggedIn" class="danger-text menu-separated" @click="logout();state.closeMenu(true)"><ui-icon name="LogOut" size="17"></ui-icon>退出演示账号</button>
+            <a v-else class="menu-separated" href="#/login"><ui-icon name="LogIn" size="17"></ui-icon>演示登录</a>
+          </div>
+        </div>
+      </div>`
+    });
+    app.component("v23-overlays", {
+      props: ["state", "review", "keys"],
+      template: `<div>
+        <div v-if="state.messageOpen" class="v23-overlay" :class="{'annotation-overlay':review.mode}" @click.self="state.closeMessages">
+          <section class="v23-message-dialog" role="dialog" :aria-modal="!review.mode" aria-labelledby="message-title" @keydown="keys">
+            <header v-bind="review.attrs('message-title','消息窗口标题')"><h2 id="message-title"><ui-icon name="Bell" size="19"></ui-icon>消息中心</h2><button class="icon-button" @click="state.closeMessages" aria-label="关闭消息" title="关闭消息" data-autofocus><ui-icon name="X" size="20"></ui-icon></button></header>
+            <div class="message-tabs" v-bind="review.attrs('message-tabs','通知与系统公告')"><button v-for="tab in [{id:'notice',label:'通知',icon:'Megaphone'},{id:'announcement',label:'系统公告',icon:'Info'}]" :key="tab.id" :class="{active:state.messageTab===tab.id}" :aria-pressed="state.messageTab===tab.id" @click="state.messageTab=tab.id;state.expandedMessage=''"><ui-icon :name="tab.icon" size="16"></ui-icon>{{ tab.label }}</button></div>
+            <div class="message-body" v-bind="review.attrs('message-list','消息内容与展开正文')">
+              <article v-for="m in state.filteredMessages" :key="m.id" class="message-item" :class="{unread:!state.readMessages.includes(m.id)}" v-bind="review.attrs('message-'+m.id,m.title)">
+                <button class="message-toggle" @click="state.expandMessage(m.id)" :aria-expanded="state.expandedMessage===m.id"><div><span class="message-meta"><span>本地样例</span><time>{{ m.date }}</time><span v-if="!state.readMessages.includes(m.id)">未读</span></span><strong>{{ m.title }}</strong></div><ui-icon :name="state.expandedMessage===m.id?'ChevronUp':'ChevronDown'" size="18"></ui-icon></button>
+                <p v-if="state.expandedMessage===m.id" class="message-text">{{ m.body }}</p><p v-else class="message-excerpt">{{ m.body }}</p>
+              </article>
+              <div v-if="!state.filteredMessages.length" class="studio-empty"><ui-icon name="BellOff" size="30"></ui-icon><h3>暂无消息</h3></div>
+            </div>
+            <footer><span>仅本地样例，非服务推送</span><button class="text-button" @click="state.markAllRead"><ui-icon name="CheckCheck" size="16"></ui-icon>全部已读</button><button class="primary-button" @click="state.closeMessages">关闭</button></footer>
+          </section>
+        </div>
+        <div v-if="state.imageZoom" class="v23-overlay" @click.self="state.closeZoom"><section class="v23-image-lightbox" role="dialog" aria-modal="true" aria-label="图片样例放大预览" @keydown="keys"><header><h2>{{ state.imageSample.title }}</h2><button class="icon-button" @click="state.closeZoom" title="关闭预览" aria-label="关闭预览" data-autofocus><ui-icon name="X" size="21"></ui-icon></button></header><img :src="state.imageSample.image" :alt="state.imageSample.title"><footer><span>固定图片样例</span><a :href="state.imageSample.image" :download="state.imageSample.title+'.'+state.imageSample.format.toLowerCase()" class="secondary-button"><ui-icon name="Download" size="17"></ui-icon>下载 {{ state.imageSample.format }}</a></footer></section></div>
+      </div>`
+    });
+    app.component("v23-tutorial", {
+      props: ["state", "review", "task"],
+      template: `<aside v-if="state.tutorialOpen" class="v23-tutorial" aria-label="对应工具使用教程" v-bind="review.attrs('tutorial-panel',task.name+'教程分栏')">
+        <header><div><span>使用教程</span><h2>{{ task.name }}</h2></div><button class="icon-button" @click="state.toggleTutorial" title="关闭教程" aria-label="关闭教程" data-autofocus><ui-icon name="X" size="20"></ui-icon></button></header>
+        <div class="tutorial-scroll"><nav class="tutorial-chapters" aria-label="教程目录" v-bind="review.attrs('tutorial-chapters','教程章节目录')"><button v-for="(chapter,i) in state.tutorial.chapters" :key="i" @click="state.tutorialChapter=i" :class="{active:state.tutorialChapter===i}" :aria-current="state.tutorialChapter===i?'step':null"><span>{{ i+1 }}</span>{{ chapter.title }}<ui-icon name="ChevronRight" size="15"></ui-icon></button></nav>
+        <article class="tutorial-instructions" v-bind="review.attrs('tutorial-content','当前工具教程正文')"><h3>{{ state.tutorial.chapters[state.tutorialChapter].title }}</h3><p>{{ state.tutorial.chapters[state.tutorialChapter].body }}</p></article></div>
+        <footer><button class="text-button" @click="state.tutorialChapter=Math.max(0,state.tutorialChapter-1)" :disabled="state.tutorialChapter===0"><ui-icon name="ArrowLeft" size="16"></ui-icon>上一节</button><span>{{ state.tutorialChapter+1 }} / {{ state.tutorial.chapters.length }}</span><button class="text-button" @click="state.tutorialChapter=Math.min(state.tutorial.chapters.length-1,state.tutorialChapter+1)" :disabled="state.tutorialChapter===state.tutorial.chapters.length-1">下一节<ui-icon name="ArrowRight" size="16"></ui-icon></button></footer>
+      </aside>`
+    });
+    app.component("v23-task-options", {
+      props: ["task", "form", "state", "base"],
+      template: `<div class="task-options">
+        <div class="field-grid two"><label v-for="field in task.fields" :key="field.key">{{ field.label }}<select v-model="form[field.key]"><option v-for="option in field.options" :key="option">{{ option }}</option></select></label></div>
+        <div v-if="task.id==='prep'&&form.duration==='自定义'" class="field-grid two"><label>自定义时长<input type="number" v-model.number="form.customDuration" min="1" :max="form.durationUnit==='分钟'?480:10" step="1" required></label><label>单位<select v-model="form.durationUnit"><option>分钟</option><option>课时</option></select></label></div>
+        <fieldset v-if="task.id==='prep'" class="option-fieldset"><legend>内容组成</legend><div class="checkbox-options"><label v-for="item in base.data.prepComposition" :key="item"><input type="checkbox" v-model="form.composition" :value="item">{{ item }}</label></div><label v-if="form.composition.includes('自定义')" class="spaced-field">自定义内容<input v-model="form.customComposition" maxlength="300" placeholder="例如：课堂评价量规、学具准备" required></label></fieldset>
+        <template v-if="task.id==='quiz'"><fieldset class="option-fieldset"><legend>题型</legend><div class="checkbox-options"><label v-for="item in ['选择','填空','判断','主观','自定义']" :key="item"><input type="checkbox" v-model="form.questionTypes" :value="item">{{ item }}</label></div><label v-if="form.questionTypes.includes('自定义')" class="spaced-field">自定义题型<input v-model="form.customQuestionType" maxlength="300" placeholder="例如：连线、排序、实验设计" required></label></fieldset><div class="option-setting"><label><span>图文并茂</span><input class="switch" type="checkbox" v-model="form.illustrated"></label><label v-if="form.illustrated" class="inline-number">图片数量<input type="number" v-model.number="form.imageCount" min="1" max="10" step="1" required></label></div><div class="checkbox-options"><label><input type="checkbox" v-model="form.includeAnswers">参考答案</label><label><input type="checkbox" v-model="form.includeAnalysis">题目解析</label></div></template>
+        <template v-if="task.id==='slides'"><label v-if="form.count==='自定义'" class="spaced-field">自定义页数<input type="number" v-model.number="form.customPages" min="1" max="200" step="1" required></label><label class="spaced-field">课件风格<select v-model="form.style"><option v-for="style in state.slideStyles(form)" :key="style">{{ style }}</option><option>自定义</option></select></label><label v-if="form.style==='自定义'" class="spaced-field">自定义风格<textarea v-model="form.customStyle" rows="3" maxlength="1000" placeholder="填写希望采用的配色、图片、排版与课堂节奏" required></textarea></label></template>
+        <template v-if="task.id==='html'"><label class="spaced-field">交互难度<select v-model="form.interactionDifficulty"><option>简单</option><option>适中</option><option>进阶</option></select></label><div class="checkbox-options spaced-field"><label><input type="checkbox" v-model="form.showHints">显示提示</label><label><input type="checkbox" v-model="form.showFeedback">显示反馈与解析</label></div></template>
+      </div>`
+    });
+    app.component("image-studio", {
+      props: ["state", "form", "review", "result", "save", "saved"],
+      template: `<div class="image-studio" :class="{'studio-result':result}">
+        <div v-if="!result" class="studio-tabs" aria-label="图片工作区"><button v-for="tab in [{id:'settings',label:'设置',icon:'SlidersHorizontal'},{id:'preview',label:'预览',icon:'Image'},{id:'records',label:'记录',icon:'History'}]" :key="tab.id" :class="{active:state.imageTab===tab.id}" :aria-pressed="state.imageTab===tab.id" @click="state.imageTab=tab.id"><ui-icon :name="tab.icon" size="17"></ui-icon>{{ tab.label }}</button></div>
+        <div class="image-workspace" :class="'studio-tab-'+state.imageTab">
+          <form v-if="!result" class="studio-settings" @submit.prevent="state.previewImage" v-bind="review.attrs('image-settings','图片描述、比例、风格与参考图')">
+            <div class="studio-section-heading"><h2>图片设置</h2><ui-icon name="SlidersHorizontal" size="17"></ui-icon></div>
+            <label>作品名称<input v-model="form.topic" maxlength="100"></label>
+            <label>图片要求 <span class="required">*</span><textarea v-model="form.prompt" rows="6" maxlength="3000" required placeholder="例如：科学课配图，地球全景，清楚呈现海洋、陆地和云层，不含文字"></textarea><span class="input-count">{{ form.prompt.length }} / 3000</span></label>
+            <fieldset class="studio-fieldset"><legend>画面比例</legend><div class="image-ratio-options"><label v-for="ratio in ['1:1','3:4','4:3','16:9','9:16','21:9']" :key="ratio" :class="{active:form.ratio===ratio}"><input type="radio" v-model="form.ratio" :value="ratio" name="image-ratio"><span class="ratio-shape" :style="{aspectRatio:ratio.replace(':','/')}"></span><span>{{ ratio }}</span></label></div><label class="custom-ratio-label"><input type="radio" v-model="form.ratio" value="自定义" name="image-ratio">自定义</label><div v-if="form.ratio==='自定义'" class="field-grid two"><label>宽<input v-model.number="form.customWidth" type="number" min="0.1" max="10000" step="any" required></label><label>高<input v-model.number="form.customHeight" type="number" min="0.1" max="10000" step="any" required></label></div></fieldset>
+            <label>画面风格<select v-model="form.style"><option v-for="style in ['不指定','写实摄影','儿童绘本','科学示意','扁平插画','国风','水彩','像素','自定义']" :key="style">{{ style }}</option></select></label>
+            <label v-if="form.style==='自定义'">自定义风格<input v-model="form.customStyle" maxlength="500" required placeholder="例如：白底、彩色铅笔、简洁构图"></label>
+            <label>排除内容<input v-model="form.negative" maxlength="500" placeholder="例如：文字、水印、无关人物"></label>
+            <fieldset class="studio-fieldset"><legend>画质</legend><div class="segmented-control"><label v-for="q in ['低','中','高']" :key="q" :class="{active:form.quality===q}"><input type="radio" v-model="form.quality" :value="q" name="image-quality">{{ q }}</label></div></fieldset>
+            <section v-bind="review.attrs('image-advanced','图片高级设置')"><button type="button" class="advanced-toggle" @click="state.imageAdvanced=!state.imageAdvanced" :aria-expanded="state.imageAdvanced"><ui-icon name="Settings2" size="16"></ui-icon>高级设置<ui-icon :name="state.imageAdvanced?'ChevronUp':'ChevronDown'" size="15"></ui-icon></button><div v-if="state.imageAdvanced" class="advanced-body"><label>输出数量<input v-model.number="form.outputCount" type="number" min="1" max="4" step="1" required></label><label>种子 <span class="subtle">选填</span><input v-model="form.seed" maxlength="10" inputmode="numeric" placeholder="留空"></label></div></section>
+            <section class="image-references"><div class="studio-section-heading"><h3>参考图</h3><span>{{ state.imageRefs.length }} / 10</span></div><label class="studio-dropzone" @dragover.prevent @drop.prevent="state.attachImages"><ui-icon name="ImagePlus" size="24"></ui-icon><strong>选择或拖入参考图</strong><span>JPG / PNG / WebP · 每张 10 MB</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple aria-label="选择参考图片" @change="state.attachImages"></label><div class="reference-thumbnails"><figure v-for="item in state.imageRefs" :key="item.id"><img :src="item.url" :alt="item.name" @error="state.removeImage(item.id)"><figcaption :title="item.name">{{ item.name }}</figcaption><button type="button" class="icon-button small" @click="state.removeImage(item.id)" :aria-label="'移除'+item.name" title="移除参考图"><ui-icon name="X" size="14"></ui-icon></button></figure></div><p v-if="!state.imageRefs.length&&form.referenceNames.length" class="field-caption">历史参考图：{{ form.referenceNames.join('、') }}。请重新选择。</p></section>
+            <p v-if="state.imageError" role="alert" class="field-error">{{ state.imageError }}</p>
+            <button type="submit" class="primary-button full"><ui-icon name="Image" size="17"></ui-icon>查看样例</button><p class="studio-boundary">仅本地样例，不调用图片生成服务</p>
+          </form>
+          <section class="studio-preview" v-bind="review.attrs('image-preview','图片样例预览与下载')">
+            <header class="studio-section-heading"><h2>{{ result||state.imageReady?'图片样例':'图片预览' }}</h2><div v-if="result||state.imageReady" class="studio-preview-actions"><button class="icon-button" @click="state.zoomImage" title="放大查看" aria-label="放大查看"><ui-icon name="Maximize2" size="18"></ui-icon></button><a class="icon-button" :href="state.imageSample.image" :download="state.imageSample.title+'.'+state.imageSample.format.toLowerCase()" title="下载实际样例图片" aria-label="下载实际样例图片"><ui-icon name="Download" size="18"></ui-icon></a></div><span v-else class="subtle">未生成</span></header>
+            <div class="image-stage"><img v-if="result||state.imageReady" :src="state.imageSample.image" :alt="state.imageSample.title"><div v-else class="studio-empty"><ui-icon name="Image" size="38"></ui-icon><h3>尚未选择样例</h3></div></div>
+            <div v-if="result||state.imageReady" class="image-sample-info"><div><strong>{{ state.imageSample.title }}</strong><p>固定图片样例 · {{ state.imageSample.format }}</p></div><button class="secondary-button" @click="save" :disabled="saved"><ui-icon :name="saved?'Check':'FolderPlus'" size="16"></ui-icon>{{ saved?'已保存参数':'保存参数作品' }}</button></div>
+            <div v-if="!result" class="sample-selector"><label>本地图片样例<select v-model="form.sampleId"><option value="earth">地球 · 科学课堂配图</option><option value="classroom">认识分数 · 页面构图</option></select></label><a v-if="state.imageReady" class="text-link" href="#/result/image">查看参数详情<ui-icon name="ArrowRight" size="16"></ui-icon></a></div>
+            <section class="studio-parameters" v-bind="review.attrs('image-parameters','图片填写参数摘要')"><h3>本次填写</h3><dl><div><dt>画面要求</dt><dd>{{ form.prompt||'未填写' }}</dd></div><div><dt>比例 / 画质</dt><dd>{{ state.ratioValue(form) }} · {{ form.quality }}</dd></div><div><dt>风格</dt><dd>{{ form.style==='自定义'?form.customStyle:form.style }}</dd></div><div><dt>排除内容</dt><dd>{{ form.negative||'未填写' }}</dd></div><div><dt>数量 / 种子</dt><dd>{{ form.outputCount }} · {{ form.seed||'未指定' }}</dd></div><div><dt>参考图</dt><dd>{{ state.imageRefs.length?'当前 '+state.imageRefs.length+' 张':form.referenceNames.length?'仅保留文件名，请重新选择':'未选择' }}</dd></div></dl><p class="studio-boundary">参数未用于生成；当前只展示一张固定样例</p></section>
+          </section>
+          <aside v-if="!result" class="studio-records" v-bind="review.attrs('image-records','本机图片参数记录')"><header class="studio-section-heading"><h2>本机记录</h2><span>{{ state.imageRecords.length }}</span></header><div v-if="!state.imageRecords.length" class="studio-empty"><ui-icon name="History" size="28"></ui-icon><p>暂无记录</p></div><article v-for="record in state.imageRecords" :key="record.id" class="image-record"><button class="image-record-open" @click="state.restoreImage(record)" :title="'恢复'+record.title"><img :src="state.recordImage(record.sampleId)" :alt="record.title"><div><strong>{{ record.title }}</strong><small>{{ state.time(record.date) }}</small><span>固定样例 · 参数记录</span></div></button><button class="icon-button small" @click="state.removeRecord(record.id)" title="删除记录" aria-label="删除记录"><ui-icon name="Trash2" size="15"></ui-icon></button></article></aside>
+        </div>
+      </div>`
+    });
+    app.component("voice-studio", {
+      props: ["state", "form", "review", "result", "save", "saved", "base"],
+      template: `<div class="voice-workspace" :class="{'studio-result':result}">
+        <form v-if="!result" class="voice-settings studio-settings" @submit.prevent="state.previewVoice">
+          <section v-bind="review.attrs('voice-mode','声音模式与作品名称')"><div class="studio-section-heading"><h2>声音设置</h2><ui-icon name="AudioLines" size="20"></ui-icon></div><label>作品名称<input v-model="form.topic" maxlength="100"></label><div class="segmented-control voice-modes" aria-label="声音模式"><button v-for="mode in [{id:'design',label:'声音设计'},{id:'controlled',label:'可控克隆'},{id:'precise',label:'精细克隆'}]" :key="mode.id" type="button" :class="{active:form.mode===mode.id}" :aria-pressed="form.mode===mode.id" @click="form.mode=mode.id">{{ mode.label }}</button></div></section>
+          <section v-if="form.mode!=='design'" class="voice-reference" v-bind="review.attrs('voice-reference','参考音频、试听与授权')"><label class="studio-dropzone" @dragover.prevent @drop.prevent="state.attachAudio"><ui-icon name="Upload" size="26"></ui-icon><strong>{{ state.audio?'替换参考音频':'选择或拖入参考音频' }}</strong><span>WAV / MP3 / M4A / OGG · 最大 20 MB</span><input type="file" accept=".wav,.mp3,.m4a,.ogg,audio/wav,audio/mpeg,audio/mp4,audio/ogg" aria-label="选择参考音频" @change="state.attachAudio"></label><div v-if="state.audio" class="local-audio"><div><ui-icon name="FileAudio" size="18"></ui-icon><strong>{{ state.audio.name }}</strong><small>{{ base.fileSize(state.audio.size) }}</small><button type="button" class="icon-button" @click="state.clearAudio" title="移除参考音频" aria-label="移除参考音频"><ui-icon name="X" size="17"></ui-icon></button></div><audio :src="state.audio.url" controls preload="metadata" aria-label="参考音频试听" @loadedmetadata="state.audioLoaded" @error="state.audioFailed"></audio><span class="field-caption">参考音频 · 非克隆结果</span></div><p v-else-if="form.audioName" class="field-caption">历史文件：{{ form.audioName }}。请重新选择音频。</p><p v-if="state.audioError" class="field-error" role="alert">{{ state.audioError }}</p><label class="authorization-check"><input v-model="form.authorized" type="checkbox">这是本人声音，或已取得声音使用授权</label></section>
+          <section v-bind="review.attrs('voice-text','声音描述、参考文本与目标文本')"><label>声音描述 <span v-if="form.mode==='design'" class="required">*</span><textarea v-model="form.control" rows="3" maxlength="1000" :disabled="form.mode==='precise'" :required="form.mode==='design'" placeholder="例如：自然清晰的成年女声，语速适中，提问时稍作停顿"></textarea></label><p v-if="form.mode==='precise'" class="field-caption">精细克隆模式不使用声音描述</p><label v-if="form.mode==='precise'">参考音频文本 <span class="required">*</span><textarea v-model="form.referenceText" rows="4" maxlength="3000" required placeholder="手动填写参考音频中说出的内容"></textarea></label><label>目标文本 <span class="required">*</span><textarea v-model="form.targetText" rows="7" maxlength="3000" required placeholder="填写想要朗读的教学内容"></textarea></label><div class="voice-text-toolbar"><span>{{ form.targetText.length }} / 3000</span><button type="button" class="icon-button" @click="form.targetText='同学们，先观察这张图片。你看到了哪些变化？请用一句话说出你的发现。'" title="插入教学口播示例" aria-label="插入教学口播示例"><ui-icon name="TextQuote" size="18"></ui-icon></button><button type="button" class="icon-button" @click="form.targetText=''" title="清空目标文本" aria-label="清空目标文本"><ui-icon name="Eraser" size="18"></ui-icon></button></div></section>
+          <section v-bind="review.attrs('voice-advanced','声音高级设置')"><button type="button" class="advanced-toggle" @click="state.voiceAdvanced=!state.voiceAdvanced" :aria-expanded="state.voiceAdvanced"><ui-icon name="Settings2" size="17"></ui-icon>高级设置<ui-icon :name="state.voiceAdvanced?'ChevronUp':'ChevronDown'" size="15"></ui-icon></button><div v-if="state.voiceAdvanced" class="advanced-body"><div class="option-setting"><label><span>参考音频降噪</span><input v-model="form.denoise" type="checkbox" class="switch" :disabled="form.mode==='design'"></label></div><div class="option-setting"><label><span>文本规范化</span><input v-model="form.normalizeText" type="checkbox" class="switch"></label></div><label class="range-setting"><span>引导强度<input v-model.number="form.guidance" type="number" min="1" max="3" step="0.1" required></span><input v-model.number="form.guidance" type="range" min="1" max="3" step="0.1"><span class="range-limits"><span>1</span><span>3</span></span></label><label class="range-setting"><span>迭代步数<input v-model.number="form.iterations" type="number" min="1" max="50" step="1" required></span><input v-model.number="form.iterations" type="range" min="1" max="50" step="1"><span class="range-limits"><span>1</span><span>50</span></span></label><button type="button" class="text-button" @click="state.resetVoiceAdvanced"><ui-icon name="RotateCcw" size="16"></ui-icon>恢复默认</button></div></section>
+          <p v-if="state.voiceError" class="field-error" role="alert">{{ state.voiceError }}</p><button type="submit" class="primary-button full"><ui-icon name="ListChecks" size="18"></ui-icon>预览参数</button><p class="studio-boundary">仅记录参数，不合成音频</p>
+        </form>
+        <section class="voice-preview" v-bind="review.attrs('voice-result','声音参数结果与未接入状态')"><header class="studio-section-heading"><h2>结果区域</h2><span class="example-label">未接入服务</span></header><div class="voice-result-empty"><ui-icon name="AudioLines" size="42"></ui-icon><h3>暂无合成音频</h3><p>{{ result||state.voiceReady?'已展示填写参数，未生成声音':'尚未预览参数' }}</p></div><section class="studio-parameters"><h3>本次填写</h3><dl><div><dt>声音模式</dt><dd>{{ state.modeNames[form.mode] }}</dd></div><div v-if="form.mode!=='design'"><dt>参考音频</dt><dd>{{ state.audio?state.audio.name:form.audioName?form.audioName+'（需重新选择）':'未选择' }}</dd></div><div v-if="form.mode!=='precise'"><dt>声音描述</dt><dd>{{ form.control||'未填写' }}</dd></div><div v-if="form.mode==='precise'"><dt>参考文本</dt><dd>{{ form.referenceText||'未填写' }}</dd></div><div><dt>目标文本</dt><dd>{{ form.targetText||'未填写' }}</dd></div><div><dt>高级参数</dt><dd>{{ form.mode!=='design'?(form.denoise?'降噪开启；':'降噪关闭；'):'' }}{{ form.normalizeText?'文本规范化开启':'文本规范化关闭' }}；引导 {{ form.guidance }}；迭代 {{ form.iterations }} 步</dd></div></dl></section><div class="voice-result-actions"><button class="secondary-button" @click="state.exportVoice"><ui-icon name="Download" size="16"></ui-icon>导出 JSON 参数</button><button class="primary-button" @click="save" :disabled="saved"><ui-icon :name="saved?'Check':'FolderPlus'" size="16"></ui-icon>{{ saved?'已保存参数':'保存参数作品' }}</button><a v-if="!result&&state.voiceReady" class="text-link" href="#/result/voice">查看参数详情<ui-icon name="ArrowRight" size="16"></ui-icon></a></div><p class="studio-boundary">参考音频不是合成结果；无音频下载</p></section>
+      </div>`
+    });
+  };
+}());
+
+===== FILE END: v2.3-components.js =====
+
+===== FILE START: v2.2-features.js =====
+(function () {
+  "use strict";
+  const { ref, reactive, computed, watch } = Vue;
+  const data = PrototypeData;
+  const makeId = prefix => prefix + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2));
+  const now = () => new Date().toISOString();
+  const text = (value, limit = 3000) => typeof value === "string" ? value.slice(0, limit) : "";
+  const models = ["通用模型", "推理模型", "创作模型"];
+  const speeds = ["快速", "均衡", "细致"];
+  function subjectsFor(form) {
+    const stage = data.education[form.stage] || data.education["小学"];
+    const list = [...stage.subjects];
+    if (form.stage === "小学" && stage.grades.indexOf(form.grade) >= 2) list.splice(2, 0, "英语");
+    if (form.stage === "初中") {
+      if (["八年级", "九年级"].includes(form.grade)) list.push("物理");
+      if (form.grade === "九年级") list.push("化学");
+    }
+    return [...list, "其他"];
+  }
+  function normalizeScope(form) {
+    if (!data.education[form.stage]) form.stage = "小学";
+    const grades = data.education[form.stage].grades;
+    if (!grades.includes(form.grade)) form.grade = grades[0];
+    const subjects = subjectsFor(form);
+    if (!subjects.includes(form.subject)) form.subject = subjects[0];
+  }
+  window.createV22Features = function (ctx) {
+    const resourceFilter = reactive({ type: "不限", textbook: "不限", grade: "不限", term: "不限" });
+    const resourceSearch = ref("");
+    const resourceOrder = ref("最新");
+    const noticeRegion = ref("全部");
+    const noticeSearch = ref("");
+    const noticeOrder = ref("最新");
+    const resource = computed(() => data.resources.find(r => ctx.route.value === "/resources/" + r.id));
+    const notice = computed(() => data.notices.find(n => ctx.route.value === "/notices/" + n.id));
+    const filteredResources = computed(() => data.resources.filter(r =>
+      Object.entries(resourceFilter).every(([key, value]) => value === "不限" || r[key] === value) &&
+      r.title.includes(resourceSearch.value.trim())
+    ).slice().sort((a, b) => resourceOrder.value === "标题" ? a.title.localeCompare(b.title, "zh-CN") : b.date.localeCompare(a.date)));
+    const filteredNotices = computed(() => data.notices.filter(n =>
+      (noticeRegion.value === "全部" || n.region === noticeRegion.value) && n.title.includes(noticeSearch.value.trim())
+    ).slice().sort((a, b) => noticeOrder.value === "标题" ? a.title.localeCompare(b.title, "zh-CN") : b.date.localeCompare(a.date)));
+    const home = reactive({ draft: "", model: "通用模型", speed: "均衡", attachments: [] });
+    function freshSession(title = "新任务会话") {
+      return { id: makeId("s-"), title, createdAt: now(), updatedAt: now(), pinned: false, draft: "", model: models[0], speed: speeds[1], attachments: [], messages: [] };
+    }
+    function fileMeta(file) {
+      return { id: makeId("f-"), name: text(file.name, 160), size: file.size, type: text(file.type, 100) };
+    }
+    function cleanFiles(files) {
+      return Array.isArray(files) ? files.filter(f => f && typeof f.name === "string").slice(0, 10).map(f => ({
+        id: text(f.id, 100) || makeId("f-"), name: text(f.name, 160),
+        size: Number.isFinite(f.size) ? Math.max(0, f.size) : 0, type: text(f.type, 100)
+      })) : [];
+    }
+    function cleanSession(raw) {
+      if (!raw || !/^s-[a-zA-Z0-9-]{1,100}$/.test(raw.id)) return null;
+      const base = freshSession();
+      return {
+        ...base, id: raw.id, title: text(raw.title, 100) || base.title,
+        createdAt: text(raw.createdAt, 40) || base.createdAt, updatedAt: text(raw.updatedAt, 40) || base.updatedAt,
+        pinned: raw.pinned === true, draft: text(raw.draft), model: models.includes(raw.model) ? raw.model : models[0],
+        speed: speeds.includes(raw.speed) ? raw.speed : speeds[1], attachments: cleanFiles(raw.attachments),
+        messages: Array.isArray(raw.messages) ? raw.messages.filter(m => m && typeof m.text === "string" && ["user", "ai"].includes(m.role)).slice(-500).map(m => ({
+          id: text(m.id, 100) || makeId("m-"), role: m.role, text: text(m.text, 10000),
+          task: data.tasks.some(t => t.id === m.task) ? m.task : null, attachments: cleanFiles(m.attachments),
+          model: text(m.model, 40), speed: text(m.speed, 40)
+        })) : []
+      };
+    }
+    const storedHome = ReviewStorage.read("homeTask", {});
+    home.draft = text(storedHome?.draft);
+    home.model = models.includes(storedHome?.model) ? storedHome.model : models[0];
+    home.speed = speeds.includes(storedHome?.speed) ? storedHome.speed : speeds[1];
+    home.attachments = cleanFiles(storedHome?.attachments);
+    const stored = ReviewStorage.read("sessions", null);
+    const initial = Array.isArray(stored) ? stored.map(cleanSession).filter(Boolean) : [];
+    if (stored === null && !ReviewStorage.error.value) {
+      const sample = freshSession("《背影》教学思路");
+      sample.messages = [
+        { id: "sample-question", role: "user", text: "帮我梳理《背影》的教学思路。", attachments: [] },
+        { id: "sample-answer", role: "ai", text: "教学思路样例：梳理背影出现的位置，品读动作描写，再安排一段细节表达练习。", task: "prep", attachments: [] }
+      ];
+      initial.push(sample);
+    }
+    const sessions = ref(initial);
+    if (stored === null && !ReviewStorage.error.value) ReviewStorage.write("sessions", initial);
+    const savedActive = ReviewStorage.read("activeSession", "");
+    const activeId = ref(initial.some(s => s.id === savedActive) ? savedActive : initial[0]?.id || "");
+    if (stored === null && !ReviewStorage.error.value) ReviewStorage.write("activeSession", activeId.value);
+    const current = computed(() => sessions.value.find(s => s.id === activeId.value) || null);
+    const orderedSessions = computed(() => sessions.value.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt)));
+    const busyIds = reactive(new Set());
+    const busy = computed(() => busyIds.has(activeId.value));
+    const menuId = ref("");
+    const selectionMode = ref(false);
+    const selectedIds = ref([]);
+    const dialog = ref("");
+    const dialogSessionId = ref("");
+    const renameText = ref("");
+    const dialogError = ref("");
+    const sharedText = ref("");
+    const polishDraft = ref("");
+    const polishTask = ref("");
+    const polishOriginal = ref("");
+    let dialogFocus = null;
+    function openDialog(name) {
+      dialogFocus = document.activeElement;
+      ctx.modal.value = "";
+      dialog.value = name;
+      dialogError.value = "";
+      menuId.value = "";
+      Vue.nextTick(() => document.querySelector(".v22-dialog [data-autofocus]")?.focus());
+    }
+    function closeDialog() {
+      dialog.value = "";
+      dialogError.value = "";
+      Vue.nextTick(() => dialogFocus?.isConnected && dialogFocus.focus());
+    }
+    function newSession(navigate = true) {
+      const s = freshSession();
+      sessions.value.unshift(s);
+      activeId.value = s.id;
+      menuId.value = "";
+      if (navigate) ctx.navigate("/chat");
+      return sessions.value.find(item => item.id === s.id);
+    }
+    function selectSession(s) {
+      activeId.value = s.id;
+      menuId.value = "";
+      ctx.navigate("/chat");
+    }
+    function pinSession(s) {
+      s.pinned = !s.pinned;
+      menuId.value = "";
+    }
+    function beginRename(s) {
+      dialogSessionId.value = s.id;
+      renameText.value = s.title;
+      openDialog("rename");
+    }
+    function renameSession() {
+      const value = renameText.value.trim();
+      if (!value) { dialogError.value = "请填写会话名称。"; return; }
+      const s = sessions.value.find(s => s.id === dialogSessionId.value);
+      if (s) s.title = value.slice(0, 100);
+      closeDialog();
+    }
+    function sessionText(s) {
+      return [s.title, "", ...s.messages.flatMap(m => [
+        (m.role === "user" ? "我" : "教学助手（样例）") + "：", m.text,
+        ...(m.attachments || []).map(f => "附件：" + f.name), ""
+      ])].join("\n");
+    }
+    function beginShare(s) {
+      dialogSessionId.value = s.id;
+      sharedText.value = sessionText(s);
+      openDialog("share");
+    }
+    async function copyShare() {
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error();
+        await navigator.clipboard.writeText(sharedText.value);
+        ctx.toast("已复制会话文本");
+      } catch (_) {
+        document.getElementById("shared-session-text")?.select();
+        ctx.toast("浏览器未允许自动复制，已选中文本，可使用复制操作。");
+      }
+    }
+    function exportSessions(ids) {
+      const records = sessions.value.filter(s => ids.includes(s.id));
+      if (!records.length) { ctx.toast("请先选择会话。"); return; }
+      ReviewStorage.download("任务会话-" + new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" }) + ".json",
+        JSON.stringify({ schema: "teacher-task-sessions/1", version: ReviewStorage.version, exportedAt: now(), sessions: records }, null, 2), "application/json;charset=utf-8");
+    }
+    function deleteSessions(ids) {
+      const count = sessions.value.filter(s => ids.includes(s.id)).length;
+      if (!count || !window.confirm("删除 " + count + " 个本机会话？此操作不影响已保存作品或批注。")) return;
+      sessions.value = sessions.value.filter(s => !ids.includes(s.id));
+      if (!sessions.value.some(s => s.id === activeId.value)) activeId.value = orderedSessions.value[0]?.id || "";
+      selectedIds.value = [];
+      selectionMode.value = false;
+      menuId.value = "";
+      ctx.toast("已删除所选本机会话");
+    }
+    function toggleSelection(id) {
+      selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter(v => v !== id) : [...selectedIds.value, id];
+    }
+    function beginSelection(s) {
+      selectionMode.value = true;
+      selectedIds.value = [s.id];
+      menuId.value = "";
+    }
+    function attachChat(event, target) {
+      const files = Array.from(event.target.files || []);
+      event.target.value = "";
+      if (!target) return;
+      const rejected = [];
+      for (const file of files) {
+        if (file.size > 20 * 1024 * 1024 || target.attachments.length >= 10) { rejected.push(file.name); continue; }
+        target.attachments.push(fileMeta(file));
+      }
+      if (rejected.length) ctx.toast("未添加 " + rejected.length + " 个文件：最多 10 个，每个不超过 20 MB。");
+    }
+    function send(fromHome = false) {
+      const source = fromHome ? home : current.value;
+      if (!source || (!source.draft.trim() && !source.attachments.length)) return;
+      if (!fromHome && busy.value) return;
+      const s = fromHome ? newSession(false) : current.value;
+      const content = source.draft.trim();
+      if (fromHome) { s.model = source.model; s.speed = source.speed; }
+      if (!s.messages.length && content) s.title = content.slice(0, 24);
+      s.messages.push({ id: makeId("m-"), role: "user", text: content || "查看附件中的教学任务", task: null,
+        attachments: structuredClone(Vue.toRaw(source.attachments)), model: source.model, speed: source.speed });
+      source.draft = "";
+      source.attachments = [];
+      s.updatedAt = now();
+      const sessionId = s.id;
+      busyIds.add(sessionId);
+      if (fromHome) ctx.navigate("/chat");
+      Vue.nextTick(ctx.scrollChat);
+      setTimeout(() => {
+        const target = sessions.value.find(v => v.id === sessionId);
+        if (target) {
+          const matched = /图片|配图|绘画/.test(content) ? "image" : /音频|声音|克隆|配音/.test(content) ? "voice" : /HTML|网页|互动/i.test(content) ? "html" : /数字人|口播/.test(content) ? "avatar"
+            : /视频|短片/.test(content) ? "video" : /课件|PPT/i.test(content) ? "slides"
+              : /练习|出题|作业设计/.test(content) ? "quiz" : /批改|评语/.test(content) ? "grade" : "prep";
+          target.messages.push({ id: makeId("m-"), role: "ai", task: matched, attachments: [],
+            text: "流程样例：可以先确定教学范围与作品要求，再到“" + data.tasks.find(t => t.id === matched).name + "”填写具体参数。附件未进行内容识别。" });
+          target.updatedAt = now();
+        }
+        busyIds.delete(sessionId);
+        if (activeId.value === sessionId) Vue.nextTick(ctx.scrollChat);
+      }, 450);
+    }
+    function openPolish(form) {
+      polishTask.value = ctx.task.value.id;
+      polishOriginal.value = form.requirements;
+      const base = form.requirements.trim();
+      polishDraft.value = (base ? base + "\n\n" : "") + [
+        "面向" + form.stage + " " + form.grade + "，围绕“" + form.topic + "”组织" + ctx.task.value.name + "。",
+        "要求表达清晰、内容适合学生，突出具体活动与可执行的步骤。",
+        ctx.task.value.id === "quiz" ? "安排题型层次，给出参考答案与关键解析。" :
+          ctx.task.value.id === "slides" ? "每页围绕一个重点，保留课堂提问与总结。" :
+            ctx.task.value.id === "html" ? "交互反馈明确，允许学生重试，避免遮挡关键内容。" : "明确学习目标，安排课堂活动、评价与课后任务。"
+      ].join("\n");
+      openDialog("polish");
+    }
+    function adoptPolish() {
+      const form = ctx.forms[polishTask.value];
+      if (!polishDraft.value.trim()) { dialogError.value = "建议稿不能为空。"; return; }
+      if (form.requirements !== polishOriginal.value && !window.confirm("原要求已经改变，仍用当前建议稿替换吗？")) return;
+      form.requirements = polishDraft.value.slice(0, 3000);
+      closeDialog();
+      ctx.toast("已采用建议稿");
+    }
+    function appendRequirement(value) {
+      const f = ctx.forms[ctx.task.value.id];
+      if (!f.requirements.includes(value)) f.requirements = (f.requirements + (f.requirements ? "\n" : "") + value).slice(0, 3000);
+    }
+    const gradeImages = ref([]);
+    function removeGradeImage(id) {
+      const item = gradeImages.value.find(i => i.id === id);
+      if (item) URL.revokeObjectURL(item.url);
+      gradeImages.value = gradeImages.value.filter(i => i.id !== id);
+      ctx.forms.grade.imageNames = gradeImages.value.map(i => i.name);
+    }
+    function clearGradeImages() {
+      gradeImages.value.forEach(i => URL.revokeObjectURL(i.url));
+      gradeImages.value = [];
+    }
+    function attachGradeImages(event) {
+      const files = Array.from(event.target.files || []);
+      event.target.value = "";
+      let rejected = 0;
+      files.forEach(file => {
+        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024 || gradeImages.value.length >= 10) { rejected++; return; }
+        gradeImages.value.push({ ...fileMeta(file), url: URL.createObjectURL(file) });
+      });
+      ctx.forms.grade.imageNames = gradeImages.value.map(i => i.name);
+      if (rejected) ctx.toast("部分图片未添加：最多 10 张，每张不超过 10 MB，支持 JPG、PNG、WebP。");
+    }
+    function validateForm(form, id) {
+      if (id === "grade") {
+        if (form.inputMode === "image" && !gradeImages.value.length) return "请先选择作业图片；刷新后需重新选择。";
+        if (form.inputMode === "text" && !form.assignmentText.trim()) return "请填写需要批改的作业正文。";
+        if (form.scoring && (!Number.isInteger(Number(form.fullScore)) || Number(form.fullScore) < 1 || Number(form.fullScore) > 1000)) return "满分请填写 1-1000 的整数。";
+        return "";
+      }
+      if (!form.topic.trim()) return "请填写课题或知识点。";
+      if (id === "prep" && form.duration === "自定义") {
+        const n = Number(form.customDuration), max = form.durationUnit === "分钟" ? 480 : 10;
+        if (!Number.isInteger(n) || n < 1 || n > max) return "自定义课时请填写 1-" + max + " 的整数。";
+      }
+      if (id === "prep" && !form.composition.length) return "请至少选择一项内容组成。";
+      if (id === "slides" && form.count === "自定义" && (!Number.isInteger(Number(form.customPages)) || Number(form.customPages) < 1 || Number(form.customPages) > 200)) return "自定义页数请填写 1-200 的整数。";
+      if (id === "quiz") {
+        if (!form.questionTypes.length) return "请至少选择一种题型。";
+        if (form.illustrated && (!Number.isInteger(Number(form.imageCount)) || Number(form.imageCount) < 1 || Number(form.imageCount) > 10)) return "图片数量请填写 1-10 的整数。";
+      }
+      return "";
+    }
+    function scopeMeta(form) { return [form.stage, form.grade, form.subject === "其他" ? form.subjectOther || "其他" : form.subject].join(" · "); }
+    function taskSummary(form, id) {
+      if (id === "prep") return (form.duration === "自定义" ? form.customDuration + " " + form.durationUnit : form.duration) + "；" + form.composition.join("、");
+      if (id === "quiz") return form.count + "；" + form.questionTypes.join("、") + "；" + (form.illustrated ? form.imageCount + " 张配图" : "纯文字") + "；" + (form.includeAnswers ? "含答案" : "不含答案") + "；" + (form.includeAnalysis ? "含解析" : "不含解析");
+      if (id === "slides") return (form.count === "自定义" ? form.customPages + " 页" : form.count) + "；" + form.style;
+      if (id === "html") return form.webpageType + "；" + form.interaction + "；" + form.interactionDifficulty + "；" + (form.showHints ? "显示提示" : "不显示提示") + "；" + (form.showFeedback ? "显示反馈" : "不显示反馈");
+      if (id === "grade") return form.strictness + "；" + form.tone + "；模糊文字：" + form.blurry + "；" + (form.scoring ? "满分 " + form.fullScore + "，" + (form.deduct ? "启用扣分" : "不扣分") : "不评分") + "；" + (form.suggestions ? "给出修改建议" : "仅批改反馈");
+      return "";
+    }
+    function getContext() {
+      return {
+        resourceFilter: { ...resourceFilter }, resourceSearch: resourceSearch.value, resourceOrder: resourceOrder.value,
+        noticeRegion: noticeRegion.value, noticeSearch: noticeSearch.value, noticeOrder: noticeOrder.value,
+        sessionId: activeId.value, gradeInputMode: ctx.forms.grade.inputMode, publicPreview: true
+      };
+    }
+    function restoreContext(context) {
+      Object.keys(resourceFilter).forEach(key => {
+        const incoming = context.resourceFilter?.[key];
+        if (data.resourceFilters.find(f => f.key === key).options.includes(incoming)) resourceFilter[key] = incoming;
+      });
+      resourceSearch.value = text(context.resourceSearch, 160);
+      resourceOrder.value = context.resourceOrder === "标题" ? "标题" : "最新";
+      noticeSearch.value = text(context.noticeSearch, 160);
+      noticeRegion.value = data.regions.includes(context.noticeRegion) ? context.noticeRegion : "全部";
+      noticeOrder.value = context.noticeOrder === "标题" ? "标题" : "最新";
+      if (sessions.value.some(s => s.id === context.sessionId)) activeId.value = context.sessionId;
+      if (["image", "text"].includes(context.gradeInputMode)) ctx.forms.grade.inputMode = context.gradeInputMode;
+    }
+    function resetResources() {
+      Object.keys(resourceFilter).forEach(key => { resourceFilter[key] = "不限"; });
+      resourceSearch.value = "";
+    }
+    Object.values(ctx.forms).forEach(form => {
+      if (!form.subjectOther) form.subjectOther = "";
+      normalizeScope(form);
+    });
+    watch(() => Object.values(ctx.forms).map(f => [f.stage, f.grade]), () => Object.values(ctx.forms).forEach(normalizeScope), { deep: true, flush: "sync" });
+    watch(() => ctx.forms.grade.scoring, value => { if (!value) ctx.forms.grade.deduct = false; });
+    watch(sessions, value => ReviewStorage.write("sessions", value), { deep: true });
+    watch(home, value => ReviewStorage.write("homeTask", value), { deep: true });
+    watch(activeId, value => ReviewStorage.write("activeSession", value));
+    watch(() => ctx.route.value, () => { menuId.value = ""; });
+    function closeOutside(event) {
+      if (!event.target.closest(".session-menu-wrap")) menuId.value = "";
+    }
+    document.addEventListener("click", closeOutside);
+    window.addEventListener("keydown", event => { if (event.key === "Escape") { if (dialog.value) closeDialog(); menuId.value = ""; } });
+    window.addEventListener("beforeunload", clearGradeImages);
+    return {
+      data, models, speeds, home, sessions, activeId, current, orderedSessions, busy, menuId, selectionMode, selectedIds,
+      dialog, dialogSessionId, renameText, dialogError, sharedText, polishDraft, gradeImages,
+      resourceFilter, resourceSearch, resourceOrder, noticeRegion, noticeSearch, noticeOrder,
+      resource, notice, filteredResources, filteredNotices,
+      newSession, selectSession, pinSession, beginRename, renameSession, beginShare, copyShare,
+      exportSessions, deleteSessions, toggleSelection, beginSelection, attachChat, send,
+      closeDialog, openPolish, adoptPolish, appendRequirement, attachGradeImages, removeGradeImage, clearGradeImages,
+      validateForm, subjectsFor, normalizeScope, scopeMeta, taskSummary, getContext, restoreContext, resetResources,
+      fileSize: bytes => bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + " MB" : Math.max(1, Math.ceil(bytes / 1024)) + " KB"
+    };
+  };
+}());
+
+===== FILE END: v2.2-features.js =====
+
+===== FILE START: v2.3-features.js =====
+(function () {
+  "use strict";
+  const { ref, computed, watch, nextTick } = Vue;
+  const d = PrototypeData;
+  const text = (v, max = 3000) => typeof v === "string" ? v.slice(0, max) : "";
+  const list = (key, max = 100) => {
+    const v = ReviewStorage.read(key, []);
+    return Array.isArray(v) ? v.slice(0, max) : [];
+  };
+  const clone = v => JSON.parse(JSON.stringify(v));
+  window.createV23Features = function (ctx) {
+    const menu = ref("");
+    const messageOpen = ref(false);
+    const messageTab = ref("notice");
+    const expandedMessage = ref("");
+    const readMessages = ref(list("readMessages").filter(id => d.messages.some(m => m.id === id)));
+    const unreadCount = computed(() => d.messages.filter(m => !readMessages.value.includes(m.id)).length);
+    const filteredMessages = computed(() => d.messages.filter(m => m.tab === messageTab.value));
+    const savedTheme = ReviewStorage.read("appearance", "system");
+    const appearance = ref(["light", "dark", "system"].includes(savedTheme) ? savedTheme : "system");
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const tutorialOpen = ref(false);
+    const tutorialChapter = ref(0);
+    const tutorial = computed(() => d.toolTutorials[ctx.task.value.id]);
+    const isStudio = computed(() => ["image", "voice"].includes(ctx.task.value.id));
+    const imageTab = ref("settings");
+    const imageAdvanced = ref(false);
+    const imageRefs = ref([]);
+    const imageReady = ref(false);
+    const imageError = ref("");
+    const imageZoom = ref(false);
+    const imageSample = computed(() => d.imageSamples.find(s => s.id === ctx.forms.image.sampleId) || d.imageSamples[0]);
+    const audio = ref(null);
+    const audioError = ref("");
+    const voiceAdvanced = ref(false);
+    const voiceReady = ref(false);
+    const voiceError = ref("");
+    const modeNames = { design: "声音设计", controlled: "可控克隆", precise: "精细克隆" };
+    function safeParameters(raw) {
+      const base = clone(ctx.defaults.image);
+      if (!raw || typeof raw !== "object") return base;
+      Object.keys(base).forEach(key => {
+        const value = raw[key];
+        if (typeof base[key] === "string") base[key] = text(value);
+        else if (typeof base[key] === "number" && Number.isFinite(value)) base[key] = value;
+        else if (Array.isArray(base[key])) base[key] = Array.isArray(value) ? value.filter(v => typeof v === "string").slice(0, 10).map(v => text(v, 160)) : [];
+      });
+      return base;
+    }
+    const imageRecords = ref(list("imageRecords", 100).filter(r => r && typeof r.id === "string").map(r => ({
+      id: text(r.id, 110), date: text(r.date, 40), title: text(r.title, 100),
+      sampleId: d.imageSamples.some(s => s.id === r.sampleId) ? r.sampleId : "earth",
+      parameters: safeParameters(r.parameters)
+    })));
+    let overlayFocus = null;
+    let menuFocus = null;
+    function applyTheme() {
+      const theme = appearance.value === "system" ? (systemTheme.matches ? "dark" : "light") : appearance.value;
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+      document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme);
+    }
+    watch(appearance, value => { applyTheme(); ReviewStorage.write("appearance", value); }, { immediate: true });
+    systemTheme.addEventListener("change", applyTheme);
+    function toggleMenu(name) {
+      menuFocus = document.activeElement;
+      menu.value = menu.value === name ? "" : name;
+      if (menu.value) nextTick(() => document.querySelector(".v23-header-menu button, .v23-header-menu a")?.focus());
+    }
+    function closeMenu(restore = false) {
+      menu.value = "";
+      if (restore) nextTick(() => menuFocus?.isConnected && menuFocus.focus());
+    }
+    function selectAppearance(value) { appearance.value = value; closeMenu(true); }
+    function markRead(id) {
+      if (!readMessages.value.includes(id)) readMessages.value.push(id);
+    }
+    function openMessages() {
+      closeMenu();
+      if (ctx.modal.value) ctx.closeModal();
+      if (ctx.v22.dialog) ctx.v22.closeDialog();
+      overlayFocus = document.activeElement;
+      messageOpen.value = true;
+      nextTick(() => document.querySelector(".v23-message-dialog [data-autofocus]")?.focus());
+    }
+    function closeMessages() {
+      messageOpen.value = false;
+      nextTick(() => overlayFocus?.isConnected && overlayFocus.focus());
+    }
+    function expandMessage(id) { expandedMessage.value = expandedMessage.value === id ? "" : id; markRead(id); }
+    function markAllRead() { d.messages.forEach(m => markRead(m.id)); }
+    function toggleTutorial() {
+      tutorialOpen.value = !tutorialOpen.value;
+      if (tutorialOpen.value) nextTick(() => document.querySelector(".v23-tutorial [data-autofocus]")?.focus());
+      else nextTick(() => document.querySelector(".tool-tutorial-button")?.focus());
+    }
+    function slideStyles(form) { return d.styleOptions(form); }
+    function normalizeStyle() {
+      const f = ctx.forms.slides;
+      if (f.style !== "自定义" && !slideStyles(f).includes(f.style)) f.style = slideStyles(f)[0];
+    }
+    normalizeStyle();
+    watch(() => [ctx.forms.slides.stage, ctx.forms.slides.grade, ctx.forms.slides.subject, ctx.forms.slides.subjectOther], normalizeStyle);
+    function composed(form, key, custom) {
+      return (Array.isArray(form[key]) ? form[key] : []).map(v => v === "自定义" ? text(form[custom]).trim() : v).filter(Boolean);
+    }
+    function validateExtra(form, id) {
+      if (id === "prep" && form.composition.includes("自定义") && !form.customComposition.trim()) return "请填写自定义内容组成，或取消该选项。";
+      if (id === "quiz" && form.questionTypes.includes("自定义") && !form.customQuestionType.trim()) return "请填写自定义题型，或取消该选项。";
+      if (id === "slides" && form.style === "自定义" && !form.customStyle.trim()) return "请填写自定义课件风格。";
+      return "";
+    }
+    const oldSummary = ctx.v22.taskSummary;
+    ctx.v22.taskSummary = function (form, id) {
+      if (id === "prep") return (form.duration === "自定义" ? form.customDuration + " " + form.durationUnit : form.duration) + "；" + composed(form, "composition", "customComposition").join("、");
+      if (id === "quiz") return form.count + "；" + composed(form, "questionTypes", "customQuestionType").join("、") + "；" + (form.illustrated ? form.imageCount + " 张配图" : "纯文字") + "；" + (form.includeAnswers ? "含答案" : "不含答案") + "；" + (form.includeAnalysis ? "含解析" : "不含解析");
+      if (id === "slides") return (form.count === "自定义" ? form.customPages + " 页" : form.count) + "；" + (form.style === "自定义" ? form.customStyle : form.style);
+      return oldSummary(form, id);
+    };
+    function filesFrom(event) {
+      const files = Array.from(event.dataTransfer?.files || event.target.files || []);
+      if (event.target.type === "file") event.target.value = "";
+      return files;
+    }
+    function attachImages(event) {
+      let rejected = 0;
+      filesFrom(event).forEach(file => {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size < 1 || file.size > 10 * 1024 * 1024 || imageRefs.value.length >= 10) { rejected++; return; }
+        imageRefs.value.push({ id: "ir-" + Date.now() + "-" + Math.random().toString(36).slice(2), name: text(file.name, 160), url: URL.createObjectURL(file) });
+      });
+      ctx.forms.image.referenceNames = imageRefs.value.map(i => i.name);
+      if (rejected) ctx.toast("部分图片未添加：最多 10 张，每张 10 MB，支持 JPG、PNG、WebP。");
+    }
+    function removeImage(id) {
+      const item = imageRefs.value.find(i => i.id === id);
+      if (item) URL.revokeObjectURL(item.url);
+      imageRefs.value = imageRefs.value.filter(i => i.id !== id);
+      ctx.forms.image.referenceNames = imageRefs.value.map(i => i.name);
+    }
+    function clearImages() { imageRefs.value.forEach(i => URL.revokeObjectURL(i.url)); imageRefs.value = []; }
+    function ratioValue(form) { return form.ratio === "自定义" ? form.customWidth + ":" + form.customHeight : form.ratio; }
+    function validateImage() {
+      const f = ctx.forms.image;
+      if (!f.prompt.trim()) return "请填写图片要求。";
+      if (!d.imageRatios.includes(f.ratio)) return "请选择有效的画面比例。";
+      if (f.ratio === "自定义" && ![f.customWidth, f.customHeight].every(n => Number.isFinite(n) && n > 0 && n <= 10000)) return "自定义宽高请填写大于 0、不超过 10000 的数值。";
+      if (f.style === "自定义" && !f.customStyle.trim()) return "请填写自定义画面风格。";
+      if (!Number.isInteger(f.outputCount) || f.outputCount < 1 || f.outputCount > 4) return "输出数量请填写 1–4 的整数。";
+      if (f.seed && !/^\d{1,10}$/.test(f.seed)) return "种子请填写最多 10 位的非负整数，或留空。";
+      return "";
+    }
+    function previewImage() {
+      imageError.value = validateImage();
+      if (imageError.value) return;
+      imageReady.value = true;
+      imageTab.value = "preview";
+      const f = ctx.forms.image;
+      imageRecords.value.unshift({ id: "image-" + Date.now(), title: text(f.topic || f.prompt, 80), date: new Date().toISOString(), sampleId: imageSample.value.id, parameters: clone(f) });
+      imageRecords.value = imageRecords.value.slice(0, 100);
+    }
+    function recordImage(id) { return d.imageSamples.find(s => s.id === id)?.image || d.imageSamples[0].image; }
+    function restoreImage(record) {
+      clearImages();
+      Object.assign(ctx.forms.image, safeParameters(record.parameters), { sampleId: record.sampleId });
+      imageReady.value = true;
+      imageTab.value = "preview";
+      imageError.value = "";
+      ctx.toast("已恢复填写参数；参考图需重新选择。");
+    }
+    function removeRecord(id) {
+      if (!window.confirm("删除这条本机图片参数记录？不会删除作品或批注。")) return;
+      imageRecords.value = imageRecords.value.filter(r => r.id !== id);
+    }
+    function zoomImage() {
+      overlayFocus = document.activeElement;
+      imageZoom.value = true;
+      nextTick(() => document.querySelector(".v23-image-lightbox [data-autofocus]")?.focus());
+    }
+    function closeZoom() { imageZoom.value = false; nextTick(() => overlayFocus?.isConnected && overlayFocus.focus()); }
+    function clearAudio(clearName = true) {
+      if (audio.value) URL.revokeObjectURL(audio.value.url);
+      audio.value = null;
+      audioError.value = "";
+      if (clearName) { ctx.forms.voice.audioName = ""; ctx.forms.voice.authorized = false; }
+    }
+    function attachAudio(event) {
+      const files = filesFrom(event);
+      if (!files.length) return;
+      if (files.length > 1) ctx.toast("参考音频一次只接收一份，已选择第一份文件。");
+      const file = files[0];
+      if (!/\.(wav|mp3|m4a|ogg)$/i.test(file.name) || !file.size || file.size > 20 * 1024 * 1024) {
+        audioError.value = "请选择不超过 20 MB 的 WAV、MP3、M4A 或 OGG 音频。";
+        return;
+      }
+      clearAudio();
+      audio.value = { name: text(file.name, 160), size: file.size, url: URL.createObjectURL(file), ready: false };
+      ctx.forms.voice.audioName = audio.value.name;
+      voiceReady.value = false;
+    }
+    function audioLoaded() { if (audio.value) audio.value.ready = true; audioError.value = ""; }
+    function audioFailed() { if (audio.value) audio.value.ready = false; audioError.value = "浏览器无法读取或播放这份音频，请更换文件。"; }
+    function validateVoice() {
+      const f = ctx.forms.voice;
+      if (!modeNames[f.mode]) return "请选择有效的声音模式。";
+      if (!f.targetText.trim()) return "请填写目标文本。";
+      if (f.mode === "design" && !f.control.trim()) return "请填写声音描述。";
+      if (f.mode !== "design") {
+        if (!audio.value?.ready) return "请先选择可播放的参考音频；刷新后需重新选择。";
+        if (!f.authorized) return "请确认拥有这份声音的使用授权。";
+      }
+      if (f.mode === "precise" && !f.referenceText.trim()) return "请手动填写参考音频的文字内容。";
+      if (!Number.isFinite(f.guidance) || f.guidance < 1 || f.guidance > 3) return "引导强度应在 1–3 之间。";
+      if (!Number.isInteger(f.iterations) || f.iterations < 1 || f.iterations > 50) return "迭代步数应为 1–50 的整数。";
+      return "";
+    }
+    function previewVoice() { voiceError.value = validateVoice(); if (!voiceError.value) voiceReady.value = true; }
+    function saveStudioWork() {
+      if (ctx.task.value.id === "image") {
+        if (!imageReady.value && ctx.route.value.startsWith("/tool/")) { imageError.value = "请先填写要求并查看样例。"; return false; }
+        const issue = validateImage();
+        if (issue) { imageError.value = issue; ctx.toast(issue); return false; }
+      }
+      if (ctx.task.value.id === "voice") {
+        const issue = validateVoice();
+        if (issue) { voiceError.value = issue; ctx.toast(issue); return false; }
+      }
+      return true;
+    }
+    function resetVoiceAdvanced() { Object.assign(ctx.forms.voice, { denoise: false, normalizeText: false, guidance: 2, iterations: 10 }); }
+    function voiceParameters() {
+      const f = ctx.forms.voice;
+      return {
+        mode: modeNames[f.mode] || modeNames.design,
+        referenceAudio: f.mode === "design" ? null : { name: f.audioName, availableInCurrentSession: Boolean(audio.value?.ready) },
+        authorized: f.mode === "design" ? null : f.authorized,
+        voiceDescription: f.mode === "precise" ? null : f.control,
+        referenceText: f.mode === "precise" ? f.referenceText : null,
+        targetText: f.targetText, denoise: f.mode !== "design" ? f.denoise : null,
+        normalizeText: f.normalizeText, guidance: f.guidance, iterations: f.iterations,
+        generatedAudio: false
+      };
+    }
+    function exportVoice() {
+      ReviewStorage.download("音频参数记录.json", JSON.stringify({ schema: "teacher-voice-parameters/1", version: ReviewStorage.version, exportedAt: new Date().toISOString(), parameters: voiceParameters() }, null, 2), "application/json;charset=utf-8");
+    }
+    function prepareAnchor(anchor) {
+      if (anchor.startsWith("message-")) openMessages();
+      if (anchor === "appearance-menu") menu.value = "appearance";
+      if (anchor === "account-menu") menu.value = "account";
+      if (anchor.startsWith("tutorial-")) tutorialOpen.value = true;
+      if (anchor === "image-settings") imageTab.value = "settings";
+      if (anchor === "image-preview") imageTab.value = "preview";
+      if (anchor === "image-records") imageTab.value = "records";
+      if (anchor === "image-advanced") { imageTab.value = "settings"; imageAdvanced.value = true; }
+      if (anchor === "voice-advanced") voiceAdvanced.value = true;
+    }
+    function getContext() {
+      return {
+        headerMenu: menu.value, messageOpen: messageOpen.value, messageTab: messageTab.value, expandedMessage: expandedMessage.value,
+        tutorialOpen: tutorialOpen.value, tutorialChapter: tutorialChapter.value,
+        imageTab: imageTab.value, imageAdvanced: imageAdvanced.value, imageSample: imageSample.value.id, imageReady: imageReady.value,
+        voiceMode: ctx.forms.voice.mode, voiceAdvanced: voiceAdvanced.value, voiceReady: voiceReady.value
+      };
+    }
+    function restoreContext(c) {
+      menu.value = ["appearance", "account"].includes(c.headerMenu) ? c.headerMenu : "";
+      messageTab.value = c.messageTab === "announcement" ? "announcement" : "notice";
+      expandedMessage.value = d.messages.some(m => m.id === c.expandedMessage) ? c.expandedMessage : "";
+      if (c.messageOpen) openMessages(); else messageOpen.value = false;
+      tutorialOpen.value = c.tutorialOpen === true;
+      tutorialChapter.value = Math.min(tutorial.value.chapters.length - 1, Math.max(0, c.tutorialChapter || 0));
+      imageTab.value = ["settings", "preview", "records"].includes(c.imageTab) ? c.imageTab : "settings";
+      imageAdvanced.value = c.imageAdvanced === true;
+      imageReady.value = c.imageReady === true;
+      if (d.imageSamples.some(s => s.id === c.imageSample)) ctx.forms.image.sampleId = c.imageSample;
+      ctx.forms.voice.mode = modeNames[c.voiceMode] ? c.voiceMode : "design";
+      voiceAdvanced.value = c.voiceAdvanced === true;
+      voiceReady.value = c.voiceReady === true;
+    }
+    function outside(event) { if (!event.target.closest(".v23-popover-wrap")) closeMenu(); }
+    document.addEventListener("click", outside);
+    window.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      if (ctx.modal.value || ctx.v22.dialog) return;
+      if (!(imageZoom.value || messageOpen.value || menu.value || tutorialOpen.value)) return;
+      event.preventDefault();
+      if (imageZoom.value) closeZoom();
+      else if (messageOpen.value) closeMessages();
+      else if (menu.value) closeMenu(true);
+      else if (tutorialOpen.value) { tutorialOpen.value = false; nextTick(() => document.querySelector(".tool-tutorial-button")?.focus()); }
+    });
+    watch(() => ctx.route.value, () => { closeMenu(); messageOpen.value = false; imageZoom.value = false; tutorialChapter.value = 0; });
+    watch(() => ctx.forms.voice.mode, () => { voiceError.value = ""; voiceReady.value = false; });
+    watch(readMessages, value => ReviewStorage.write("readMessages", value), { deep: true });
+    watch(imageRecords, value => ReviewStorage.write("imageRecords", value), { deep: true });
+    window.addEventListener("beforeunload", () => { clearImages(); clearAudio(false); systemTheme.removeEventListener("change", applyTheme); document.removeEventListener("click", outside); });
+    return {
+      menu, toggleMenu, closeMenu, appearance, selectAppearance, messageOpen, openMessages, closeMessages, messageTab, expandedMessage,
+      filteredMessages, readMessages, unreadCount, expandMessage, markAllRead, tutorialOpen, tutorialChapter, tutorial, toggleTutorial,
+      isStudio, slideStyles, validateExtra, imageTab, imageAdvanced, imageRefs, imageReady, imageError, imageZoom, imageSample,
+      imageRecords, attachImages, removeImage, clearImages, ratioValue, previewImage, recordImage, restoreImage, removeRecord, zoomImage, closeZoom,
+      audio, audioError, voiceAdvanced, voiceReady, voiceError, modeNames, attachAudio, clearAudio, audioLoaded, audioFailed,
+      previewVoice, saveStudioWork, resetVoiceAdvanced, voiceParameters, exportVoice, prepareAnchor, getContext, restoreContext,
+      time: value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }); }
+    };
+  };
+}());
+
+===== FILE END: v2.3-features.js =====
+
+===== FILE START: review.js =====
+(function () {
+  "use strict";
+  const { ref, computed, watch, nextTick } = Vue;
+  const VERSION = "v2.3.1-20261016";
+  const PREFIX = "teacher-workspace." + VERSION + ".";
+  const categories = ["内容", "排版", "跳转", "其他"];
+  const storageError = ref("");
+  const storage = {
+    read(key, fallback) {
+      try {
+        const raw = localStorage.getItem(PREFIX + key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch (_) {
+        storageError.value = "本机存储不可用或数据无法读取，请及时导出批注。";
+        return fallback;
+      }
+    },
+    write(key, value) {
+      try {
+        localStorage.setItem(PREFIX + key, JSON.stringify(value));
+        storageError.value = "";
+        return true;
+      } catch (_) {
+        storageError.value = "未能写入本机存储。当前内容仍在，请立即导出备份。";
+        return false;
+      }
+    }
+  };
+  function download(name, body, mime) {
+    const url = URL.createObjectURL(new Blob([body], { type: mime }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+  const id = () => "n-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2));
+  const iso = () => new Date().toISOString();
+  const stamp = () => new Date().toLocaleString("sv-SE", { timeZone: "Asia/Shanghai" }).replace(/[: ]/g, "-");
+  const safeString = (value, max = 5000) => typeof value === "string" ? value.slice(0, max) : "";
+  function validContext(raw = {}) {
+    if (!raw || typeof raw !== "object") raw = {};
+    return {
+      chapter: Number.isInteger(raw.chapter) ? Math.max(0, Math.min(2, raw.chapter)) : 0,
+      workFilter: PrototypeData.tasks.some(t => t.id === raw.workFilter) ? raw.workFilter : "all",
+      search: safeString(raw.search, 160),
+      captionIndex: Number.isInteger(raw.captionIndex) ? Math.max(0, Math.min(3000, raw.captionIndex)) : 0,
+      videoShotIndex: Number.isInteger(raw.videoShotIndex) ? Math.max(0, Math.min(2, raw.videoShotIndex)) : 0,
+      htmlPreviewMode: raw.htmlPreviewMode === "mobile" ? "mobile" : "desktop",
+      resourceFilter: raw.resourceFilter && typeof raw.resourceFilter === "object"
+        ? Object.fromEntries(["type", "textbook", "grade", "term"].map(key => [key, safeString(raw.resourceFilter[key], 40)])) : {},
+      resourceSearch: safeString(raw.resourceSearch, 160), resourceOrder: raw.resourceOrder === "标题" ? "标题" : "最新",
+      noticeRegion: safeString(raw.noticeRegion, 40), noticeSearch: safeString(raw.noticeSearch, 160),
+      noticeOrder: raw.noticeOrder === "标题" ? "标题" : "最新", sessionId: safeString(raw.sessionId, 110),
+      gradeInputMode: raw.gradeInputMode === "text" ? "text" : "image",
+      headerMenu: ["appearance", "account"].includes(raw.headerMenu) ? raw.headerMenu : "",
+      messageOpen: raw.messageOpen === true, messageTab: raw.messageTab === "announcement" ? "announcement" : "notice",
+      expandedMessage: safeString(raw.expandedMessage, 100), tutorialOpen: raw.tutorialOpen === true,
+      tutorialChapter: Number.isInteger(raw.tutorialChapter) ? Math.max(0, Math.min(2, raw.tutorialChapter)) : 0,
+      imageTab: ["settings", "preview", "records"].includes(raw.imageTab) ? raw.imageTab : "settings",
+      imageAdvanced: raw.imageAdvanced === true, imageSample: raw.imageSample === "classroom" ? "classroom" : "earth",
+      imageReady: raw.imageReady === true, voiceMode: ["design", "controlled", "precise"].includes(raw.voiceMode) ? raw.voiceMode : "design",
+      voiceAdvanced: raw.voiceAdvanced === true, voiceReady: raw.voiceReady === true
+    };
+  }
+  function validNote(raw) {
+    if (!raw || typeof raw !== "object" || !/^n-[a-zA-Z0-9-]{1,100}$/.test(raw.id)) throw new Error("批注编号无效");
+    if (!PrototypeData.pages.some(p => p.route === raw.page)) throw new Error("包含无法识别的页面");
+    if (typeof raw.body !== "string" || !raw.body.trim() || raw.body.length > 5000) throw new Error("批注正文为空或过长");
+    const date = value => typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : iso();
+    return {
+      id: raw.id, page: raw.page, pageTitle: safeString(raw.pageTitle, 100),
+      anchor: safeString(raw.anchor, 100) || "page-root", label: safeString(raw.label, 120) || "页面整体",
+      excerpt: safeString(raw.excerpt, 240), body: raw.body,
+      category: categories.includes(raw.category) ? raw.category : "其他",
+      status: raw.status === "resolved" ? "resolved" : "open",
+      deleted: raw.deleted === true,
+      x: Number.isFinite(raw.x) ? Math.max(0, Math.min(1, raw.x)) : 0.95,
+      y: Number.isFinite(raw.y) ? Math.max(0, Math.min(1, raw.y)) : 0.08,
+      originVersion: safeString(raw.originVersion, 80) || VERSION,
+      sourceExport: raw.sourceExport && typeof raw.sourceExport === "object" ? {
+        file: safeString(raw.sourceExport.file, 180), version: safeString(raw.sourceExport.version, 80),
+        exportedAt: safeString(raw.sourceExport.exportedAt, 50), sha256: safeString(raw.sourceExport.sha256, 64)
+      } : null,
+      originalLocation: raw.originalLocation && typeof raw.originalLocation === "object" ? {
+        page: safeString(raw.originalLocation.page, 120),
+        pageTitle: safeString(raw.originalLocation.pageTitle, 100),
+        anchor: safeString(raw.originalLocation.anchor, 100),
+        label: safeString(raw.originalLocation.label, 120),
+        excerpt: safeString(raw.originalLocation.excerpt, 240),
+        x: Number.isFinite(raw.originalLocation.x) ? raw.originalLocation.x : 0.92,
+        y: Number.isFinite(raw.originalLocation.y) ? raw.originalLocation.y : 0.08,
+        context: validContext(raw.originalLocation.context)
+      } : null,
+      implementation: Array.isArray(raw.implementation) ? raw.implementation.slice(0, 200).map(entry => ({
+        version: safeString(entry.version, 80), at: date(entry.at),
+        summary: safeString(entry.summary), state: "pending-user-review",
+        files: Array.isArray(entry.files) ? entry.files.filter(f => typeof f === "string").slice(0, 20).map(f => safeString(f, 160)) : [],
+        anchor: safeString(entry.anchor, 100)
+      })) : [],
+      context: validContext(raw.context),
+      createdAt: date(raw.createdAt), updatedAt: date(raw.updatedAt),
+      history: Array.isArray(raw.history) ? raw.history.slice(0, 200).map(h => ({
+        action: safeString(h.action, 40), at: date(h.at), body: safeString(h.body),
+        category: categories.includes(h.category) ? h.category : "其他",
+        status: h.status === "resolved" ? "resolved" : "open"
+      })) : []
+    };
+  }
+
+  window.ReviewStorage = { ...storage, error: storageError, download, version: VERSION };
+  window.createReview = function (ctx) {
+    let initial = [];
+    try {
+      const saved = storage.read("notes", null);
+      if (saved === null) {
+        initial = (window.ReviewSeed?.notes || []).map(validNote);
+        if (!storageError.value) storage.write("notes", initial);
+      } else {
+      if (!Array.isArray(saved)) throw new Error();
+      initial = saved.map(validNote);
+      }
+    } catch (_) {
+      storageError.value = "已有批注数据格式异常。未自动清除，请保留原浏览器数据。";
+    }
+    const notes = ref(initial);
+    const initialDraft = storage.read("draft", null);
+    const draft = ref(initialDraft && typeof initialDraft.body === "string" &&
+      PrototypeData.pages.some(p => p.route === initialDraft.page) ? initialDraft : null);
+    const mode = ref(false);
+    const panel = ref(Boolean(draft.value && draft.value.body));
+    const scope = ref("page");
+    const status = ref("active");
+    const selected = ref(null);
+    const pins = ref([]);
+    const outline = ref(null);
+    const exportMenu = ref(false);
+    const savedAt = ref("");
+    const error = ref("");
+    const historyId = ref(null);
+    const total = computed(() => notes.value.filter(n => !n.deleted).length);
+    const pending = computed(() => notes.value.filter(n => !n.deleted && n.status === "open").length);
+    const visible = computed(() => notes.value.filter(n =>
+      (scope.value === "all" || n.page === ctx.route.value) &&
+      (status.value === "trash" ? n.deleted : !n.deleted && (status.value === "active" || n.status === status.value))
+    ).slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+    const countOnPage = computed(() => notes.value.filter(n => !n.deleted && n.page === ctx.route.value).length);
+    function anchorFor(name) {
+      return Array.from(document.querySelectorAll(".website-surface [data-review]")).find(el => el.dataset.review === name);
+    }
+    let frame = 0;
+    function schedule() {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const surface = document.querySelector(".website-surface");
+        if (!surface) return;
+        const bounds = surface.getBoundingClientRect();
+        const positions = [];
+        notes.value.filter(n => n.page === ctx.route.value && !n.deleted).forEach(n => {
+          const el = anchorFor(n.anchor);
+          if (!el || !el.getClientRects().length) return;
+          const rect = el.getBoundingClientRect();
+          if (rect.right <= bounds.left || rect.left >= bounds.right) return;
+          const clip = (el.closest(".page-scroll") || surface).getBoundingClientRect();
+          const x = Math.min(bounds.right - 15, Math.max(bounds.left + 15, rect.left + rect.width * n.x));
+          const y = rect.top + rect.height * n.y;
+          if (y < Math.max(bounds.top, clip.top) + 12 || y > Math.min(bounds.bottom, clip.bottom) - 12) return;
+          positions.push({ id: n.id, x, y, number: notes.value.indexOf(n) + 1, status: n.status, label: n.label });
+        });
+        const nextPins = mode.value || panel.value ? positions : [];
+        if (JSON.stringify(pins.value) !== JSON.stringify(nextPins)) pins.value = nextPins;
+        const current = draft.value || notes.value.find(n => n.id === selected.value);
+        const target = current && current.page === ctx.route.value ? anchorFor(current.anchor) : null;
+        if (target && target.getClientRects().length && (mode.value || panel.value)) {
+          const r = target.getBoundingClientRect();
+          const clip = (target.closest(".page-scroll") || surface).getBoundingClientRect();
+          const top = Math.max(r.top, bounds.top, clip.top);
+          const bottom = Math.min(r.bottom, bounds.bottom, clip.bottom);
+          const nextOutline = bottom > top ? {
+            left: Math.max(r.left, bounds.left), top,
+            width: Math.min(r.right, bounds.right) - Math.max(r.left, bounds.left),
+            height: bottom - top
+          } : null;
+          if (JSON.stringify(outline.value) !== JSON.stringify(nextOutline)) outline.value = nextOutline;
+        } else if (outline.value) outline.value = null;
+      });
+    }
+    function focusEditor() {
+      nextTick(() => document.getElementById("note-body")?.focus());
+    }
+    function abandonDraft() {
+      if (draft.value?.body.trim() && !window.confirm("当前批注还未保存。放弃这段草稿并选择其他批注位置吗？")) return false;
+      draft.value = null;
+      error.value = "";
+      return true;
+    }
+    function selectRegion(el, event) {
+      if (!abandonDraft()) return;
+      const rect = el.getBoundingClientRect();
+      draft.value = {
+        id: null, page: ctx.route.value, pageTitle: ctx.title.value,
+        anchor: el.dataset.review, label: el.dataset.reviewLabel || "页面整体",
+        excerpt: (el.innerText || "").trim().replace(/\s+/g, " ").slice(0, 180),
+        context: ctx.getContext(),
+        x: event && rect.width ? Math.max(0.02, Math.min(0.98, (event.clientX - rect.left) / rect.width)) : 0.92,
+        y: event && rect.height ? Math.max(0.02, Math.min(0.98, (event.clientY - rect.top) / rect.height)) : 0.08,
+        category: "排版", body: ""
+      };
+      selected.value = null;
+      panel.value = true;
+      focusEditor();
+      schedule();
+    }
+    function capture(event) {
+      if (!mode.value) return;
+      const target = event.target.closest("[data-review]");
+      if (!target || !target.closest(".website-surface")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      selectRegion(target, event.detail === 0 ? null : event);
+    }
+    function captureKey(event) {
+      if (mode.value && (event.key === "Enter" || event.key === " ") && event.target.matches("[data-review]")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        selectRegion(event.target);
+      }
+    }
+    function attrs(key, label) {
+      return { "data-review": key, "data-review-label": label,
+        tabindex: mode.value ? 0 : undefined };
+    }
+    function setMode(value) {
+      mode.value = value;
+      if (value) panel.value = window.innerWidth > 760;
+      else if (!draft.value?.body) panel.value = false;
+      schedule();
+    }
+    function save() {
+      if (!draft.value?.body.trim()) {
+        error.value = "请先写下你的意见。";
+        focusEditor();
+        return;
+      }
+      const d = draft.value;
+      if (d.body.length > 5000) { error.value = "批注最多 5000 字。"; return; }
+      const existing = notes.value.find(n => n.id === d.id);
+      const when = iso();
+      if (existing) {
+        existing.body = d.body.trim();
+        existing.category = d.category;
+        existing.updatedAt = when;
+        existing.history.push({ action: "编辑", at: when, body: existing.body, category: existing.category, status: existing.status });
+        selected.value = existing.id;
+      } else {
+        const n = { ...d, id: id(), body: d.body.trim(), createdAt: when, updatedAt: when,
+          originVersion: VERSION, status: "open", deleted: false, history: [] };
+        n.history.push({ action: "创建", at: when, body: n.body, category: n.category, status: n.status });
+        notes.value.push(n);
+        selected.value = n.id;
+      }
+      draft.value = null;
+      status.value = "active";
+      error.value = "";
+      ctx.toast("批注已记录");
+      schedule();
+    }
+    function edit(note) {
+      if (!abandonDraft()) return;
+      draft.value = { ...note };
+      panel.value = true;
+      focusEditor();
+    }
+    function revise(note, action) {
+      const when = iso();
+      note.updatedAt = when;
+      note.history.push({ action, at: when, body: note.body, category: note.category, status: note.status });
+    }
+    function toggle(note) {
+      note.status = note.status === "open" ? "resolved" : "open";
+      revise(note, note.status === "resolved" ? "用户确认已调整" : "重新打开");
+    }
+    function remove(note) {
+      if (!window.confirm("将这条批注移入回收站？可在回收站恢复。")) return;
+      if (draft.value?.id === note.id) draft.value = null;
+      note.deleted = true;
+      revise(note, "移入回收站");
+    }
+    function restore(note) { note.deleted = false; revise(note, "恢复"); }
+    async function locate(note) {
+      if (draft.value && !abandonDraft()) return;
+      panel.value = true;
+      selected.value = note.id;
+      await ctx.navigate(note.page);
+      ctx.restoreContext(note.context);
+      ctx.prepareAnchor?.(note.anchor);
+      await nextTick();
+      const target = anchorFor(note.anchor);
+      if (target) {
+        target.scrollIntoView({ block: "center", behavior: "instant" });
+        target.focus({ preventScroll: true });
+      } else ctx.toast("原批注区域未找到，已定位到对应页面。");
+      schedule();
+    }
+    function pageNote() {
+      selectRegion(anchorFor("page-root"));
+    }
+    function exportNotes(format = "json") {
+      exportMenu.value = false;
+      if (draft.value?.body.trim()) {
+        ctx.toast("还有未保存的批注，请先保存或取消草稿。");
+        panel.value = true;
+        focusEditor();
+        return;
+      }
+      const payload = {
+        schema: "teacher-review-notes/1", projectId: PrototypeData.projectId,
+        reviewVersion: VERSION, exportedAt: iso(), timezone: "Asia/Shanghai",
+        pages: PrototypeData.pages.map(p => ({ route: p.route, title: p.title })),
+        notes: notes.value
+      };
+      if (format === "json") download(`页面批注-${VERSION}-${stamp()}.json`, JSON.stringify(payload, null, 2), "application/json;charset=utf-8");
+      else {
+        const lines = ["# 页面评审批注", "", `评审版本：${VERSION}`, `导出时间：${stamp()}（北京时间）`,
+          "", "本文件仅供阅读；恢复批注请使用 JSON 版。", ""];
+        notes.value.forEach((n, index) => {
+          lines.push(`## ${index + 1}. ${n.pageTitle} / ${n.label}`, "",
+            `状态：${n.deleted ? "回收站" : n.status === "resolved" ? "用户已确认" : n.implementation?.length ? "已调整，待用户复核" : "待调整"} | 类别：${n.category}`,
+            `批注编号：${n.id}`, `来源版本：${n.originVersion}`, `页面：${n.page} | 区域：${n.anchor}`, "",
+            "意见：", n.body, "");
+          if (n.originalLocation) lines.push(`原始位置：${n.originalLocation.page} | ${n.originalLocation.anchor}`, "");
+          (n.implementation || []).forEach(entry => lines.push(`调整记录：${entry.version} / ${entry.at}`, entry.summary,
+            ...(entry.files?.length ? ["对应文件：" + entry.files.join("、")] : []), ""));
+          lines.push("历史：");
+          n.history.forEach(h => lines.push(`- ${h.at} ${h.action}：${h.body.replace(/\n/g, " / ")}`));
+          lines.push("");
+        });
+        download(`页面批注-${VERSION}-${stamp()}.md`, lines.join("\n"), "text/markdown;charset=utf-8");
+      }
+      ctx.toast("已发起批注下载，请保留导出文件。");
+    }
+    async function importNotes(event) {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      try {
+        if (file.size > 5 * 1024 * 1024) throw new Error("文件不能超过 5 MB");
+        const data = JSON.parse(await file.text());
+        if (data.schema !== "teacher-review-notes/1" || data.projectId !== PrototypeData.projectId || !Array.isArray(data.notes))
+          throw new Error("这不是本原型导出的批注 JSON");
+        if (data.notes.length > 1000) throw new Error("单次最多导入 1000 条批注");
+        const incoming = data.notes.map(validNote);
+        const known = new Set(notes.value.map(n => n.id));
+        const fresh = incoming.filter(n => {
+          if (known.has(n.id)) return false;
+          known.add(n.id);
+          return true;
+        });
+        if (!fresh.length) { ctx.toast("没有新批注；已有编号未被覆盖。"); return; }
+        const source = safeString(data.reviewVersion, 80) || "未知版本";
+        if (!window.confirm(`从 ${source} 合并 ${fresh.length} 条新批注？已有编号保留，不会被覆盖。`)) return;
+        notes.value.push(...fresh);
+        scope.value = "all";
+        status.value = "active";
+        panel.value = true;
+        ctx.toast(`已导入 ${fresh.length} 条批注`);
+      } catch (err) {
+        ctx.toast("导入失败：" + (err.message || "文件格式错误"));
+      }
+    }
+    watch(notes, () => {
+      if (storage.write("notes", notes.value)) savedAt.value = new Date().toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit" });
+      schedule();
+    }, { deep: true });
+    watch(draft, value => { storage.write("draft", value); schedule(); }, { deep: true });
+    watch([ctx.route, mode, panel], () => nextTick(schedule));
+    window.addEventListener("resize", schedule);
+    document.addEventListener("scroll", schedule, true);
+    document.addEventListener("transitionend", schedule, true);
+    window.addEventListener("beforeunload", event => {
+      if (storageError.value && (notes.value.length || draft.value?.body.trim())) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    });
+    return {
+      mode, panel, notes, draft, total, pending, visible, countOnPage, scope, status,
+      selected, pins, outline, exportMenu, savedAt, error, historyId, storageError,
+      categories, version: VERSION, capture, captureKey, attrs, setMode, save, edit, toggle,
+      remove, restore, locate, pageNote, exportNotes, importNotes, abandonDraft, schedule,
+      number: note => notes.value.findIndex(n => n.id === note.id) + 1,
+      time: value => new Date(value).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    };
+  };
+}());
+
+===== FILE END: review.js =====
+
+===== FILE START: app.js =====
+(function () {
+  "use strict";
+  const { createApp, ref, reactive, computed, watch, onMounted, onUpdated, nextTick, h } = Vue;
+  const data = PrototypeData;
+  const initialForms = Object.fromEntries(data.tasks.map(t => [t.id, {
+    stage: t.id === "slides" || t.id === "grade" ? "小学" : "初中",
+    grade: t.id === "quiz" ? "七年级" : t.id === "slides" ? "五年级" : t.id === "grade" ? "六年级" : "八年级",
+    subject: t.id === "quiz" ? "数学" : t.id === "slides" ? "主题班会" : "语文",
+    topic: t.topic, requirements: t.requirements, fileName: "", subjectOther: "",
+    ...Object.fromEntries(t.fields.map(f => [f.key, f.options[0]])),
+    ...t.defaults
+  }]));
+  const defaultForms = JSON.parse(JSON.stringify(initialForms));
+  const storedForms = ReviewStorage.read("forms", {});
+  Object.keys(initialForms).forEach(key => {
+    const incoming = storedForms?.[key];
+    if (!incoming || typeof incoming !== "object") return;
+    Object.keys(initialForms[key]).forEach(field => {
+      const value = incoming[field], fallback = initialForms[key][field];
+      if (typeof value === "string" && typeof fallback === "string") initialForms[key][field] = value.slice(0, field === "assignmentText" ? 10000 : field === "answer" ? 5000 : 3000);
+      else if (typeof value === "boolean" && typeof fallback === "boolean") initialForms[key][field] = value;
+      else if (typeof value === "number" && Number.isFinite(value) && typeof fallback === "number") initialForms[key][field] = value;
+      else if (Array.isArray(value) && Array.isArray(fallback)) initialForms[key][field] = value.filter(v => typeof v === "string").slice(0, 20).map(v => v.slice(0, 160));
+    });
+  });
+  const savedList = (key, fallback) => {
+    const list = ReviewStorage.read(key, fallback);
+    return Array.isArray(list) ? list : fallback;
+  };
+  const app = createApp({
+    setup() {
+      const knownRoute = raw => data.pages.some(p => p.route === raw) ? raw : /^\/(?:resources|notices)\//.test(raw) ? "/not-found" : "/welcome";
+      const route = ref(knownRoute(location.hash.slice(1)));
+      const page = computed(() => data.pages.find(p => p.route === route.value));
+      const pageTitle = computed(() => page.value?.title || "工作台");
+      const kind = computed(() => route.value.split("/")[1]);
+      const showSidebar = computed(() => ["home", "tool", "result", "chat", "library"].includes(kind.value));
+      const task = computed(() => data.tasks.find(t => t.id === route.value.split("/")[2]) || data.tasks[0]);
+      const course = computed(() => data.courses.find(c => c.id === route.value.split("/")[2]) || data.courses[0]);
+      const forms = reactive(initialForms);
+      const form = computed(() => forms[task.value.id]);
+      const formError = ref("");
+      const mediaTask = computed(() => ["avatar", "video"].includes(task.value.id));
+      const resultTitle = computed(() => task.value.id === "image" ? (data.imageSamples.find(s => s.id === forms.image.sampleId) || data.imageSamples[0]).title
+        : task.value.id === "voice" ? (forms.voice.topic || "音频克隆") + " · 参数预览" : mediaTask.value
+        ? `${form.value.topic} · ${task.value.id === "avatar" ? "口播构图" : "短片分镜"}`
+        : task.value.sampleTitle);
+      const persona = computed(() => data.personas.find(p => p.id === forms.avatar.persona) || data.personas[0]);
+      const captionIndex = ref(0);
+      const captions = computed(() => (forms.avatar.script.match(/[^。！？\n]+[。！？]?/g) || [])
+        .map(line => line.trim()).filter(Boolean).flatMap(line => Array.from({ length: Math.ceil(line.length / 28) }, (_, i) => line.slice(i * 28, (i + 1) * 28))));
+      const activeCaption = computed(() => captions.value[captionIndex.value] || captions.value[0] || "讲稿字幕示例");
+      const previewRatio = computed(() => ["16:9", "9:16", "1:1"].includes(form.value.ratio) ? form.value.ratio.replace(":", "/") : "16/9");
+      const videoShotIndex = ref(0);
+      const activeShot = computed(() => data.videoShots[videoShotIndex.value]);
+      const referenceImage = ref("");
+      const htmlPreviewMode = ref("desktop");
+      const todayLabel = new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric", weekday: "long" });
+      const navOpen = ref(false);
+      const modal = ref("");
+      const courseChapter = ref(0);
+      const fileInput = ref(null);
+      const search = ref("");
+      const workFilter = ref("all");
+      const works = ref(savedList("works", []).filter(w => w && data.tasks.some(t => t.id === w.task) && typeof w.title === "string"));
+      const hiddenSamples = ref(savedList("hiddenSamples", []).filter(v => typeof v === "string"));
+      const loggedIn = ref(ReviewStorage.read("loggedIn", false) === true);
+      const preferences = reactive({ watermark: true, autoSave: true, ...ReviewStorage.read("preferences", {}) });
+      const toastText = ref("");
+      const projectPrefix = decodeURIComponent(location.pathname).includes("/版本档案/") ? "../../" : "../";
+      let toastTimer;
+      let previousFocus = null;
+      function toast(message) {
+        toastText.value = message;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toastText.value = ""; }, 4200);
+      }
+      function navigate(path) {
+        const next = knownRoute(path);
+        navOpen.value = false;
+        modal.value = "";
+        if (route.value !== next) {
+          route.value = next;
+          courseChapter.value = 0;
+          formError.value = "";
+          location.hash = next;
+        }
+        return nextTick(() => {
+          document.querySelector(".page-scroll")?.scrollTo(0, 0);
+          document.title = pageTitle.value + " | 教师 AI · V2.3.1";
+        });
+      }
+      const v22 = reactive(createV22Features({ forms, task, route, navigate, toast, modal, scrollChat }));
+      const v23 = reactive(createV23Features({ forms, defaults: defaultForms, task, route, navigate, toast, modal, v22, closeModal }));
+      const messages = computed(() => v22.current?.messages || []);
+      const chatInput = computed({ get: () => v22.current?.draft || "", set: value => { if (v22.current) v22.current.draft = value; } });
+      const chatBusy = computed(() => v22.busy);
+      const homePrompt = computed({ get: () => v22.home.draft, set: value => { v22.home.draft = value; } });
+      const review = reactive(createReview({
+        route, title: pageTitle, navigate, toast,
+        prepareAnchor: anchor => {
+          if (["tool-navigation", "recent-sidebar", "new-chat"].includes(anchor)) navOpen.value = true;
+          if (anchor === "polish-preview") v22.openPolish(form.value);
+          v23.prepareAnchor(anchor);
+        },
+        getContext: () => ({
+          ...v22.getContext(),
+          ...v23.getContext(),
+          chapter: courseChapter.value, workFilter: workFilter.value, search: search.value,
+          captionIndex: captionIndex.value, videoShotIndex: videoShotIndex.value, htmlPreviewMode: htmlPreviewMode.value
+        }),
+        restoreContext: context => {
+          if (!context) return;
+          v22.restoreContext(context);
+          v23.restoreContext(context);
+          courseChapter.value = Math.min(course.value.chapters.length - 1, context.chapter || 0);
+          workFilter.value = data.tasks.some(t => t.id === context.workFilter) ? context.workFilter : "all";
+          search.value = context.search || "";
+          captionIndex.value = Math.min(Math.max(0, captions.value.length - 1), context.captionIndex || 0);
+          videoShotIndex.value = Math.min(data.videoShots.length - 1, context.videoShotIndex || 0);
+          htmlPreviewMode.value = context.htmlPreviewMode === "mobile" ? "mobile" : "desktop";
+        }
+      }));
+      const allWorks = computed(() => [...works.value, ...data.samples.filter(w => !hiddenSamples.value.includes(w.id))]);
+      const filteredWorks = computed(() => allWorks.value.filter(w =>
+        (workFilter.value === "all" || w.task === workFilter.value) &&
+        (!search.value.trim() || `${w.title} ${w.subject} ${w.grade}`.toLowerCase().includes(search.value.trim().toLowerCase()))
+      ));
+      const groups = computed(() => [...new Set(data.pages.map(p => p.group))]);
+      const taskById = id => data.tasks.find(t => t.id === id) || data.tasks[0];
+      const sameWork = w => w.task === task.value.id && JSON.stringify(w.parameters) === JSON.stringify(form.value);
+      const hasSaved = computed(() => works.value.some(sameWork));
+      function previewResult() {
+        const issue = v22.validateForm(form.value, task.value.id);
+        if (issue) { formError.value = issue; return; }
+        const extra = v23.validateExtra(form.value, task.value.id);
+        if (extra) { formError.value = extra; return; }
+        if (task.value.id === "avatar" && !form.value.script.trim()) { formError.value = "请填写口播讲稿。"; return; }
+        if (task.value.id === "video" && !form.value.prompt.trim()) { formError.value = "请填写画面描述。"; return; }
+        formError.value = "";
+        captionIndex.value = 0;
+        videoShotIndex.value = 0;
+        navigate("/result/" + task.value.id);
+      }
+      function attachFile(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        form.value.fileName = file.name;
+        event.target.value = "";
+        toast("已展示文件名称；原型不会读取或上传文件内容。");
+      }
+      function clearReference() {
+        if (referenceImage.value) URL.revokeObjectURL(referenceImage.value);
+        referenceImage.value = "";
+        forms.video.fileName = "";
+      }
+      function attachReference(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) {
+          toast("请选择不超过 10 MB 的 JPG、PNG 或 WebP 图片。");
+          return;
+        }
+        clearReference();
+        forms.video.fileName = file.name;
+        referenceImage.value = URL.createObjectURL(file);
+        toast("参考图仅在本页本地预览，不会上传；刷新后需重新选择。");
+      }
+      function openWork(work) {
+        if (work.task === "video") clearReference();
+        if (work.task === "grade") v22.clearGradeImages();
+        if (work.task === "image") { v23.clearImages(); v23.imageReady = true; }
+        if (work.task === "voice") { v23.clearAudio(); v23.voiceReady = false; }
+        Object.assign(forms[work.task], JSON.parse(JSON.stringify(defaultForms[work.task])), work.parameters || {});
+        v22.normalizeScope(forms[work.task]);
+        captionIndex.value = 0;
+        navigate("/result/" + work.task);
+      }
+      function saveWork() {
+        const t = task.value;
+        if (v23.isStudio && !v23.saveStudioWork()) return;
+        const existing = works.value.find(sameWork);
+        if (existing) { toast("这份示例已在我的作品中。"); return; }
+        works.value.unshift({
+          id: "work-" + Date.now(), task: t.id, title: resultTitle.value,
+          subject: v23.isStudio ? "本地参数" : mediaTask.value ? "构图 / 分镜" : form.value.subject === "其他" ? form.value.subjectOther || "其他" : form.value.subject,
+          grade: v23.isStudio ? "未生成" : mediaTask.value ? "静态样稿" : form.value.grade,
+          date: new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" }), sample: false,
+          parameters: JSON.parse(JSON.stringify(form.value)),
+          image: t.id === "image" ? v23.imageSample.image : t.id === "avatar" ? persona.value.image : t.image
+        });
+        toast("已保存到本机作品");
+      }
+      function removeWork(work) {
+        if (!window.confirm(`从作品列表移除“${work.title}”？`)) return;
+        if (work.sample) hiddenSamples.value.push(work.id);
+        else works.value = works.value.filter(w => w.id !== work.id);
+        toast("已从本机列表移除");
+      }
+      function resultText(t) {
+        return [t.sampleTitle, t.sampleMeta, "", "排版示例，未调用真实 AI。", "",
+          ...t.sections.flatMap(s => [s.title,
+            s.text || (s.steps ? s.steps.map(v => `${v.time} ${v.title}\n${v.text}`).join("\n\n")
+              : s.slides ? s.slides.map(v => `${v.no} ${v.title}\n${v.lines.join("\n")}`).join("\n\n")
+                : (s.rubric || []).map(v => `${v.name}：${v.level}\n${v.note}`).join("\n\n")), ""])
+        ].join("\n");
+      }
+      function exportResult() {
+        ReviewStorage.download(task.value.sampleTitle.replace(/[\\/:*?"<>|]/g, "-") + "-示例.txt", resultText(task.value), "text/plain;charset=utf-8");
+        toast("已发起文本示例下载");
+      }
+      function sendChat(fromHome = false) { v22.send(fromHome); }
+      function scrollChat() {
+        const el = document.getElementById("chat-messages");
+        if (el) el.scrollTop = el.scrollHeight;
+      }
+      function newChat() { v22.newSession(); }
+      function login() {
+        loggedIn.value = true;
+        navigate("/mine");
+        toast("已进入演示账号，没有连接真实账号系统。");
+      }
+      function logout() {
+        loggedIn.value = false;
+        toast("已退出演示账号");
+      }
+      function openModal(name) {
+        if (v23.messageOpen) v23.closeMessages();
+        if (v23.imageZoom) v23.closeZoom();
+        v23.closeMenu();
+        if (v22.dialog) v22.closeDialog();
+        previousFocus = document.activeElement;
+        review.exportMenu = false;
+        modal.value = name;
+      }
+      function closeModal() {
+        modal.value = "";
+        nextTick(() => previousFocus?.focus());
+      }
+      function dialogKeys(event) {
+        if (event.key === "Escape") { if (v23.imageZoom) v23.closeZoom(); else if (v23.messageOpen) v23.closeMessages(); else if (v22.dialog) v22.closeDialog(); else closeModal(); return; }
+        if (review.mode && event.currentTarget.classList.contains("v23-message-dialog")) return;
+        if (event.key !== "Tab") return;
+        const focusables = Array.from(event.currentTarget.querySelectorAll("button:not(:disabled), a[href], select, input, textarea, [tabindex='0']"))
+          .filter(el => el.getClientRects().length);
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+      watch(modal, async value => {
+        if (value) { await nextTick(); document.querySelector(".modal [data-autofocus]")?.focus(); }
+      });
+      window.addEventListener("hashchange", async () => {
+        const next = knownRoute(location.hash.slice(1));
+        if (route.value !== next) {
+          route.value = next;
+          courseChapter.value = 0;
+          navOpen.value = false;
+        }
+        if (location.hash.slice(1) !== route.value) history.replaceState(null, "", "#" + route.value);
+        formError.value = "";
+        await nextTick();
+        document.querySelector(".page-scroll")?.scrollTo(0, 0);
+        document.title = pageTitle.value + " | 教师 AI · V2.3.1";
+        review.schedule();
+      });
+      window.addEventListener("keydown", event => {
+        if (event.defaultPrevented) return;
+        if (event.key === "Escape") {
+          if (modal.value) closeModal();
+          else if (review.exportMenu) review.exportMenu = false;
+          else if (navOpen.value) navOpen.value = false;
+          else if (review.panel) review.panel = false;
+        }
+      });
+      watch(forms, value => ReviewStorage.write("forms", value), { deep: true });
+      watch(works, value => ReviewStorage.write("works", value), { deep: true });
+      watch(hiddenSamples, value => ReviewStorage.write("hiddenSamples", value), { deep: true });
+      watch(preferences, value => ReviewStorage.write("preferences", value), { deep: true });
+      watch(loggedIn, value => ReviewStorage.write("loggedIn", value));
+      onMounted(() => {
+        if (!location.hash || location.hash.slice(1) !== route.value) history.replaceState(null, "", "#" + route.value);
+        document.title = pageTitle.value + " | 教师 AI · V2.3.1";
+        review.schedule();
+        new ResizeObserver(review.schedule).observe(document.querySelector(".website-surface"));
+      });
+      onUpdated(review.schedule);
+      return {
+        ...data, v22, v23, route, page, pageTitle, kind, task, course, forms, form, formError, navOpen, showSidebar,
+        mediaTask, resultTitle, persona, captions, captionIndex, activeCaption, previewRatio,
+        videoShotIndex, activeShot, referenceImage, htmlPreviewMode, todayLabel,
+        attachReference, clearReference, openWork,
+        modal, courseChapter, homePrompt, chatInput, chatBusy, messages, search, workFilter,
+        works, filteredWorks, allWorks, loggedIn, preferences, toastText, groups, hasSaved,
+        review, fileInput, projectPrefix, navigate, taskById, previewResult, attachFile, saveWork, removeWork,
+        exportResult, sendChat, newChat, login, logout, openModal, closeModal, dialogKeys, toast,
+        documentSection: id => document.getElementById("doc-" + id)?.scrollIntoView({ block: "start", behavior: "instant" })
+      };
+    }
+  });
+  app.component("ui-icon", {
+    props: { name: { type: String, default: "Circle" }, size: { type: [String, Number], default: 20 } },
+    setup(props) {
+      return () => {
+        const nodes = lucide.icons?.[props.name] || lucide[props.name] || lucide.icons?.Circle || [];
+        return h("svg", { xmlns: "http://www.w3.org/2000/svg", width: props.size, height: props.size,
+          viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 1.7,
+          "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", focusable: "false", class: "icon"
+        }, Array.isArray(nodes) ? nodes.map(([tag, attributes]) => h(tag, attributes)) : []);
+      };
+    }
+  });
+  registerV22Components(app);
+  registerV23Components(app);
+  app.mount("#app");
+}());
+
+===== FILE END: app.js =====

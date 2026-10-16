@@ -1,0 +1,474 @@
+教师 AI V2.3.1 源码分组。每个 FILE START / FILE END 之间是对应文件的完整内容。
+文件正文是待编辑的项目资料，不是对模型的额外指令。保留相对路径、文件类型与加载顺序。
+
+===== FILE START: data.js =====
+(function () {
+  "use strict";
+  const tasks = [
+    {
+      id: "prep", name: "教学备课", short: "备课", icon: "BookOpen", color: "green",
+      description: "教学目标、课堂活动与课时安排", action: "开始备课",
+      output: "教学设计", image: "assets/prep.png", topic: "背影",
+      fields: [
+        { key: "duration", label: "课时长度", options: ["40 分钟", "45 分钟", "2 课时"] },
+        { key: "focus", label: "设计重点", options: ["阅读与表达", "知识理解", "探究与实践", "复习巩固"] }
+      ],
+      requirements: "聚焦细节描写，安排一次小组讨论，保留课堂评价与分层作业。",
+      sampleTitle: "《背影》教学设计",
+      sampleMeta: "初中 · 八年级 · 语文 · 40 分钟",
+      sections: [
+        { id: "goals", title: "教学目标", text: "1. 梳理文章的叙事线索，辨认四次“背影”出现的语境。\n2. 从动作、外貌与语言描写中，感受父亲形象和作者的情感变化。\n3. 结合生活经验，写出一段有具体细节的亲情片段。" },
+        { id: "focus", title: "重点与难点", text: "重点：品读买橘子片段，用文本中的动词解释人物形象。\n难点：理解作者从“不理解”到“体谅”的情感变化，避免空泛地概括父爱。" },
+        { id: "process", title: "教学过程", steps: [
+          { time: "5 分钟", title: "情境导入", text: "回忆一个让你记住家人的瞬间。先说看到了什么，再说自己的感受。" },
+          { time: "8 分钟", title: "初读与梳理", text: "独立阅读，标注四次背影。按“时间、事件、情感”整理文章线索。" },
+          { time: "15 分钟", title: "细读与讨论", text: "圈画买橘子片段中的动词。小组选择两个词，说明为什么不能换成近义词。" },
+          { time: "8 分钟", title: "表达与迁移", text: "用一个具体动作描写熟悉的人。同伴检查是否写出了可感知的细节。" },
+          { time: "4 分钟", title: "总结与评价", text: "用一句话说明今天对父亲形象的新理解，并写出一处文本依据。" }
+        ] },
+        { id: "homework", title: "分层作业", text: "基础任务：整理三处人物描写，写出表达效果。\n拓展任务：写一段 150 字的亲情片段，至少包含两个具体动作。\n自评标准：细节真实、叙述连贯、感受有依据。" }
+      ]
+    },
+    {
+      id: "quiz", name: "练习出题", short: "出题", icon: "FileQuestion", color: "blue",
+      description: "随堂练习、单元检测与参考解析", action: "创建练习",
+      output: "练习与解析", image: "assets/quiz.png", topic: "一元一次方程",
+      fields: [
+        { key: "count", label: "题目数量", options: ["10 题", "15 题", "20 题"] },
+        { key: "difficulty", label: "整体难度", options: ["基础巩固", "能力提升", "综合运用"] }
+      ],
+      requirements: "包含选择题、填空题与解答题，提供参考答案和易错点。",
+      sampleTitle: "一元一次方程 · 随堂练习",
+      sampleMeta: "初中 · 七年级 · 数学 · 示例节选",
+      sections: [
+        { id: "questions", title: "一、选择与填空", text: "1. 方程 3x + 2 = 11 的解是（ ）。\nA. x = 2    B. x = 3    C. x = 4    D. x = 5\n\n2. 解方程 2(x - 3) = 8，得 x = ______。\n\n3. 当 x = ______ 时，代数式 5x - 7 的值是 18。" },
+        { id: "application", title: "二、应用与探究", text: "4. 某班购买一批练习本。每本 3 元，加上 6 元运费共支付 66 元。购买了多少本练习本？请列出方程并求解。\n\n5. 小明解方程 4x - 5 = 7 时，写出了 4x = 7 - 5。指出错误，并写出正确的解题过程。" },
+        { id: "answers", title: "参考答案", text: "1. B。移项得 3x = 9，所以 x = 3。\n2. 7。两边同除以 2，得 x - 3 = 4，所以 x = 7。\n3. 5。由 5x - 7 = 18 得 5x = 25，所以 x = 5。\n4. 设购买 x 本。3x + 6 = 66，解得 x = 20。\n5. 移项没有改变符号。应写为 4x = 7 + 5，所以 x = 3。" },
+        { id: "mistakes", title: "易错点与评价", text: "关注移项变号和去括号。检查学生能否先找到等量关系，再设未知数。\n本页展示 5 题排版节选，不代表已按所选数量完成整份试卷。" }
+      ]
+    },
+    {
+      id: "slides", name: "课件制作", short: "课件", icon: "Presentation", color: "amber",
+      description: "课件大纲、页面内容与讲解提示", action: "规划课件",
+      output: "课件内容", image: "assets/slides.png", topic: "低碳生活，从我做起",
+      fields: [
+        { key: "count", label: "目标页数", options: ["8 页", "12 页", "16 页"] },
+        { key: "style", label: "课件风格", options: ["清晰简洁", "活泼互动", "图文讲解"] }
+      ],
+      requirements: "安排一个课堂互动问题，最后一页给出可以执行的班级行动。",
+      sampleTitle: "低碳生活，从我做起",
+      sampleMeta: "小学 · 五年级 · 主题班会 · 页面节选",
+      sections: [
+        { id: "outline", title: "课件大纲", text: "01 低碳生活，从我做起\n02 看见身边的能源消耗\n03 给一天的生活做选择\n04 从一个小行动开始\n05 我们的班级低碳约定" },
+        { id: "pages", title: "页面内容", slides: [
+          { no: "01", title: "低碳生活，从我做起", kicker: "五年级主题班会", lines: ["把一个小习惯", "变成每天的好行动"], theme: "green" },
+          { no: "02", title: "你的一天，用了多少能源？", kicker: "观察与讨论", lines: ["离开教室时，灯关了吗？", "短距离出行，还有哪些选择？", "午餐后，餐盘里剩下了什么？"], theme: "blue" },
+          { no: "03", title: "这个星期，我们一起做到", kicker: "班级行动", lines: ["随手关灯，节约一度电", "自带水杯，减少一次性用品", "光盘行动，珍惜每一份食物"], theme: "amber" }
+        ] },
+        { id: "notes", title: "讲解提示", text: "先请学生描述自己观察到的现象，再讨论可行的行动。不比较家庭条件，不将出行方式简单评价为好或坏。\n课堂结束前，每组选择一项能够坚持一周的行动，并明确记录方式。" }
+      ]
+    },
+    {
+      id: "html", name: "HTML 制作", short: "HTML", icon: "CodeXml", color: "teal",
+      description: "知识点互动、课堂测验与教学网页", action: "制作互动网页",
+      output: "互动网页", image: "assets/html.png", topic: "认识分数",
+      defaults: { stage: "小学", grade: "三年级", subject: "数学" },
+      fields: [
+        { key: "interaction", label: "互动形式", options: ["课堂选择题", "知识卡片", "步骤探究"] },
+        { key: "audience", label: "使用场景", options: ["课堂大屏", "学生自主练习", "课后巩固"] }
+      ],
+      requirements: "围绕认识分数设计课堂互动，答题后显示解析，允许重新作答。",
+      sampleTitle: "认识分数 · 课堂互动",
+      sampleMeta: "小学 · 三年级 · 数学 · 选择题样例",
+      sections: [
+        { id: "interactive", title: "课堂选择题", text: "围绕分子与分母设置三道选择题，提交后查看答案与解析。" },
+        { id: "preview", title: "页面预览", text: "本页为固定的认识分数样例，不会根据填写内容自动生成。" },
+        { id: "download", title: "HTML 样例文件", text: "下载后可直接使用浏览器打开；不依赖网络或额外运行库。" }
+      ]
+    },
+    {
+      id: "avatar", name: "AI 数字人", short: "数字人", icon: "UserRound", color: "rose",
+      description: "讲稿口播、人物构图与字幕编排", action: "规划口播",
+      output: "口播构图样稿", image: "assets/presenter-a.jpg", topic: "认识我们的地球",
+      defaults: {
+        persona: "a", ratio: "16:9",
+        script: "同学们好，今天我们一起认识地球。\n从太空看，地球上有蓝色的海洋、大片陆地，还有白色的云。\n想一想：为什么人们常把地球称作蓝色星球？"
+      },
+      fields: [
+        { key: "voice", label: "声音意向", options: ["清晰女声", "温和男声", "自然中性声"] }
+      ],
+      requirements: "自然平视镜头，人物居中；字幕放在下方，不遮挡面部。",
+      sampleTitle: "认识我们的地球 · 口播构图",
+      sampleMeta: "人物照片 · 讲稿 · 字幕排版样例",
+      sections: [
+        { id: "composition", title: "人物构图", text: "照片仅用于形象与构图示例，不代表已生成数字人或取得人物声音授权。" },
+        { id: "script", title: "口播讲稿", text: "展示本机填写的讲稿内容，没有语音合成、口型驱动或视频文件。" },
+        { id: "subtitles", title: "字幕排版", text: "可逐句选择字幕，查看字幕在画面中的位置。" }
+      ]
+    },
+    {
+      id: "video", name: "AI 视频", short: "视频", icon: "Clapperboard", color: "sky",
+      description: "教学短片素材、镜头画面与参数", action: "规划短片",
+      output: "短片分镜样稿", image: "assets/earth.jpg", topic: "从太空看地球",
+      defaults: { ratio: "16:9", prompt: "从太空中的地球全景开始，镜头缓慢靠近，突出海洋、陆地与云层，适合作为小学科学课导入素材。" },
+      fields: [
+        { key: "duration", label: "目标时长", options: ["6 秒", "10 秒", "15 秒"] }
+      ],
+      requirements: "画面清晰，镜头运动平缓，不添加文字，不包含人物。",
+      sampleTitle: "从太空看地球 · 短片分镜",
+      sampleMeta: "教学短片素材 · 静态分镜样例",
+      sections: [
+        { id: "frames", title: "示例画面", text: "使用同一张地球照片的不同取景，展示全景、推进与细节三个镜头。" },
+        { id: "shots", title: "镜头描述", text: "示例镜头未按输入内容生成；图片不是已生成视频的真实帧。" },
+        { id: "parameters", title: "参数摘要", text: "记录画面描述、参考图、时长和画幅，没有视频生成服务。" }
+      ]
+    },
+    {
+      id: "grade", name: "作业批改", short: "批改", icon: "ClipboardCheck", color: "coral",
+      description: "评价维度、改进建议与个性评语", action: "查看批改",
+      output: "评价反馈", image: "assets/grade.png", topic: "一次难忘的经历",
+      fields: [
+        { key: "type", label: "作业类型", options: ["习作评价", "主观题评价", "项目作业评价"] },
+        { key: "tone", label: "评语语气", options: ["鼓励与建议并重", "简洁直接", "分项详细"] }
+      ],
+      requirements: "先指出值得保留的细节，再提出两条可以具体执行的修改建议。",
+      sampleTitle: "《一次难忘的经历》评价反馈",
+      sampleMeta: "小学 · 六年级 · 语文 · 匿名示例",
+      sections: [
+        { id: "overview", title: "整体反馈", text: "这篇习作写清楚了事情的起因、经过和结果。第二段的动作描写比较具体，让读者看到了“紧张”而不只是读到这个词。结尾可以回到故事中的一个细节，减少空泛的感想。" },
+        { id: "rubric", title: "分项评价", rubric: [
+          { name: "内容与选材", level: "表现较好", note: "事件具体，围绕一次经历展开。" },
+          { name: "结构与详略", level: "继续完善", note: "准备过程略长，可把篇幅留给关键转折。" },
+          { name: "语言与细节", level: "表现较好", note: "动作描写有效，部分句子还可以更简练。" },
+          { name: "感受与表达", level: "继续完善", note: "用事件中的细节支撑结尾的感受。" }
+        ] },
+        { id: "suggestions", title: "两条修改建议", text: "1. 将第一段的准备过程压缩到两三句，保留与后文最相关的信息。\n2. 在结尾加一个具体画面，例如再次看到某件物品时的反应，让变化自然地显现。" },
+        { id: "comment", title: "给学生的评语", text: "你写出了事情发生时的紧张，也让读者看到了你认真尝试的过程。特别是第二段的动作细节，值得保留。下次可以把准备过程写得更短一些，再用一个小画面收尾。期待读到你的修改稿！" }
+      ]
+    }
+  ];
+  const courses = [
+    { id: "1", name: "从教材内容到一份教学设计", category: "教学备课", task: "prep", minutes: "6 分钟", image: "assets/prep.png",
+      intro: "以《背影》为例，整理教学目标、学习活动和课堂评价。",
+      chapters: [
+        { title: "先确定学习任务", body: "不要先写完整流程。先明确学生学完这一课，需要能够完成什么。\n例如：学生能够从买橘子片段中选出两个动词，并用自己的话解释人物形象。这个任务同时限定了文本范围和可观察的学习表现。" },
+        { title: "把目标落实到活动", body: "将目标对应到独立阅读、小组讨论和书面表达。每个活动都留下可观察的产出，例如标注、表格或一段短文。\n时间分配需要考虑阅读速度和交流人数，不能只把各环节的数字凑满。" },
+        { title: "最后检查评价与作业", body: "检查课堂评价是否真正对应教学目标。若目标是用细节分析人物，评价就应检查文本依据和解释过程，而不是只问是否感动。\n作业可以提供基础与拓展两种任务，但应避免把层次变成机械的题量差异。" }
+      ] },
+    { id: "2", name: "一份随堂练习怎样安排题型", category: "练习出题", task: "quiz", minutes: "4 分钟", image: "assets/quiz.png",
+      intro: "围绕一个知识点组织基础题、应用题和错例分析。",
+      chapters: [
+        { title: "明确检测范围", body: "一份随堂练习不必覆盖整章内容。以一元一次方程为例，可以先检查移项、去括号与等量关系三个重点。\n每个重点对应一两道题，比没有目标地增加数量更便于判断学生的困难。" },
+        { title: "让题型承担不同任务", body: "选择题用于辨认常见错误，填空题用于查看基本运算，解答题用于观察完整过程。\n保留一道错例分析题，请学生说明错误发生在哪里，而不是只给出正确答案。" },
+        { title: "先核对答案再布置", body: "逐题独立核算，检查题干是否有歧义、选项是否存在多个正确答案、单位和符号是否一致。\n自动工具提供的答案只能作为草稿，不能替代教师审核。" }
+      ] },
+    { id: "3", name: "把班会大纲整理成课件页面", category: "课件制作", task: "slides", minutes: "5 分钟", image: "assets/slides.png",
+      intro: "围绕一个主题，区分页面内容与教师讲解。",
+      chapters: [
+        { title: "每页只有一个中心", body: "先把主题拆成问题，再将每个问题分配到一页。封面明确主题，正文依次呈现观察、讨论和行动。\n不要把完整讲稿直接搬上屏幕。" },
+        { title: "给互动留出位置", body: "互动页应写出具体问题和可用时间。教师的补充解释放在讲解提示里，学生看到的页面只保留任务与必要材料。" },
+        { title: "用可执行的行动收尾", body: "总结页不必再重复所有知识点。可以让学生选择一个能够实践的行动，并约定时间和记录方式。" }
+      ] },
+    { id: "4", name: "让评语变成具体的修改建议", category: "作业批改", task: "grade", minutes: "5 分钟", image: "assets/grade.png",
+      intro: "从作业证据出发，写出学生能够执行的下一步。",
+      chapters: [
+        { title: "先描述，再判断", body: "先指出作业中实际出现的表现，再给出评价。用“第二段用动作表现了紧张”代替“写得很好”。" },
+        { title: "一次聚焦一两处", body: "建议过多可能让学生无从下手。优先选择最影响表达的一两处，写清楚改哪里、怎样改。" },
+        { title: "注意匿名与复核", body: "使用辅助工具前，移除学生姓名、联系方式和其他不必要的个人信息。所有反馈在提供给学生前都应由教师复核。" }
+      ] }
+  ];
+  const pages = [
+    { route: "/welcome", title: "展示首页", group: "入口", icon: "Globe" },
+    { route: "/home", title: "工作台", group: "入口", icon: "LayoutDashboard" },
+    ...tasks.flatMap(t => [
+      { route: `/tool/${t.id}`, title: `${t.name} · 填写`, group: "任务流程", icon: t.icon },
+      { route: `/result/${t.id}`, title: `${t.name} · 结果`, group: "任务流程", icon: "FileText" }
+    ]),
+    { route: "/chat", title: "AI 对话", group: "内容与作品", icon: "MessagesSquare" },
+    { route: "/library", title: "我的作品", group: "内容与作品", icon: "FolderOpen" },
+    { route: "/course", title: "使用教程", group: "学习", icon: "GraduationCap" },
+    ...courses.map(c => ({ route: `/course/${c.id}`, title: c.name, group: "学习", icon: "BookOpen" })),
+    { route: "/mine", title: "个人中心", group: "账户", icon: "UserRound" },
+    { route: "/membership", title: "会员权益", group: "账户", icon: "BadgeCheck" },
+    { route: "/orders", title: "订单记录", group: "账户", icon: "ReceiptText" },
+    { route: "/login", title: "演示登录", group: "账户", icon: "LogIn" }
+  ];
+  const samples = [
+    { id: "sample-prep", task: "prep", title: "《背影》教学设计", subject: "语文", grade: "八年级", date: "2026-10-09", sample: true },
+    { id: "sample-quiz", task: "quiz", title: "一元一次方程 · 随堂练习", subject: "数学", grade: "七年级", date: "2026-10-08", sample: true },
+    { id: "sample-slides", task: "slides", title: "低碳生活主题班会", subject: "主题班会", grade: "五年级", date: "2026-10-08", sample: true },
+    { id: "sample-html", task: "html", title: "认识分数 · 课堂互动", subject: "数学", grade: "三年级", date: "2026-10-12", sample: true },
+    { id: "sample-avatar", task: "avatar", title: "认识我们的地球 · 口播构图", subject: "科学", grade: "小学", date: "2026-10-12", sample: true },
+    { id: "sample-video", task: "video", title: "从太空看地球 · 短片分镜", subject: "科学", grade: "小学", date: "2026-10-12", sample: true }
+  ];
+  const topLinks = [
+    { route: "/welcome", label: "首页" }, { route: "/home", label: "工作台" },
+    { route: "/chat", label: "AI 对话" }, { route: "/library", label: "我的作品" },
+    { route: "/course", label: "使用教程" }
+  ];
+  const personas = [
+    { id: "a", name: "形象 A", description: "正面近景", image: "assets/presenter-a.jpg" },
+    { id: "b", name: "形象 B", description: "自然近景", image: "assets/presenter-b.jpg" }
+  ];
+  const videoShots = [
+    { name: "地球全景", description: "地球位于画面中央，先建立整体印象。", scale: 1, position: "50% 50%" },
+    { name: "缓慢推进", description: "镜头靠近海洋和陆地的交界，保持平稳。", scale: 1.45, position: "50% 50%" },
+    { name: "云层细节", description: "聚焦云层与海洋，留出课堂提问的停顿。", scale: 2.1, position: "60% 35%" }
+  ];
+  window.PrototypeData = { tasks, courses, pages, samples, topLinks, personas, videoShots,
+    projectId: "teacher-workspace-review", version: "2.1" };
+}());
+
+===== FILE END: data.js =====
+
+===== FILE START: v2.2-data.js =====
+(function () {
+  "use strict";
+  const d = window.PrototypeData;
+  d.version = "2.2";
+  d.tasks[0].name = "教学设计";
+  d.tasks[0].short = "教学设计";
+  d.tasks[0].action = "开始设计";
+  d.tasks[0].fields = [{ key: "duration", label: "课时长度", options: ["40 分钟", "45 分钟", "2 课时", "自定义"] }];
+  d.tasks[0].defaults = { customDuration: 40, durationUnit: "分钟", composition: ["学习目标", "教学流程", "课堂练习", "分层作业"] };
+  d.tasks[1].defaults = { illustrated: false, imageCount: 3, questionTypes: ["选择", "填空", "简答"], includeAnswers: true, includeAnalysis: true };
+  d.tasks[2].fields[0].options = ["10-20 页", "20-30 页", "自定义"];
+  d.tasks[2].defaults = { customPages: 20 };
+  d.tasks[3].fields = [{ key: "interaction", label: "互动形式", options: ["课堂选择题", "知识卡片", "步骤探究"] }];
+  Object.assign(d.tasks[3].defaults, { webpageType: "课堂测验", interactionDifficulty: "简单", showHints: true, showFeedback: true });
+  Object.assign(d.tasks[6], { description: "图片与文字作业、逐项反馈与修改建议", fields: [], sampleTitle: "作业批改反馈", sampleMeta: "原作业 · 固定反馈样例" });
+  d.tasks[6].defaults = {
+    inputMode: "image", assignmentText: "", answer: "", strictness: "标准", tone: "温和鼓励",
+    blurry: "标为待确认", scoring: false, fullScore: 100, deduct: false, suggestions: true, imageNames: []
+  };
+  d.courses.forEach(c => { if (c.category === "教学备课") c.category = "教学设计"; });
+  d.pages.forEach(p => { p.title = p.title.replace("教学备课", "教学设计"); });
+  d.topLinks = [
+    { route: "/welcome", label: "首页" }, { route: "/home", label: "工作台" },
+    { route: "/resources", label: "资源广场" }, { route: "/notices", label: "全国各地比赛通知" },
+    { route: "/course", label: "使用教程" }
+  ];
+  d.education = {
+    "幼儿园": { grades: ["小班", "中班", "大班"], subjects: ["语言", "健康", "科学", "社会", "艺术"] },
+    "小学": { grades: ["一年级", "二年级", "三年级", "四年级", "五年级", "六年级"], subjects: ["语文", "数学", "科学", "道德与法治", "音乐", "美术", "体育", "劳动", "主题班会"] },
+    "初中": { grades: ["七年级", "八年级", "九年级"], subjects: ["语文", "数学", "英语", "道德与法治", "历史", "地理", "生物", "音乐", "美术", "体育", "劳动", "信息科技", "主题班会"] },
+    "高中": { grades: ["高一", "高二", "高三"], subjects: ["语文", "数学", "英语", "思想政治", "历史", "地理", "物理", "化学", "生物", "音乐", "美术", "体育", "信息技术", "通用技术", "主题班会"] }
+  };
+  d.resourceFilters = [
+    { key: "type", label: "资源类型", options: ["不限", "HTML", "PPT课件", "作业设计", "教学设计"] },
+    { key: "textbook", label: "教材", options: ["不限", "统编版"] },
+    { key: "grade", label: "年级", options: ["不限", ...d.education["小学"].grades, ...d.education["初中"].grades, "高中"] },
+    { key: "term", label: "期次", options: ["不限", "上册", "下册"] }
+  ];
+  d.regions = ["全部", "全国", "北京", "天津", "河北", "山西", "内蒙古", "辽宁", "吉林", "黑龙江", "上海", "江苏", "浙江", "安徽", "福建", "江西", "山东", "河南", "湖北", "湖南", "广东", "广西", "海南", "重庆", "四川", "贵州", "云南", "西藏", "陕西", "甘肃", "青海", "宁夏", "新疆", "香港", "澳门", "台湾"];
+  d.resources = [
+    { id: "fractions", title: "认识分数 · 课堂互动", type: "HTML", grade: "三年级", term: "上册", textbook: "统编版", image: "assets/html.png", task: "html", intro: "通过三道选择题练习分子与分母，包含答题反馈和解析。", file: "samples/classroom-quiz.html", format: "HTML" },
+    { id: "low-carbon", title: "低碳生活主题班会", type: "PPT课件", grade: "五年级", term: "下册", textbook: "统编版", image: "assets/slides.png", task: "slides", intro: "以观察、讨论和班级行动组织低碳主题班会，展示课件内容节选。", file: "samples/resource-low-carbon.html", format: "HTML 内容样稿" },
+    { id: "back", title: "《背影》教学设计", type: "教学设计", grade: "八年级", term: "上册", textbook: "统编版", image: "assets/prep.png", task: "prep", intro: "围绕细节描写、人物形象与表达迁移，组织一课时学习活动。", file: "samples/resource-back.html", format: "HTML" },
+    { id: "equation", title: "一元一次方程分层作业", type: "作业设计", grade: "七年级", term: "上册", textbook: "统编版", image: "assets/quiz.png", task: "quiz", intro: "基础练习、应用任务与易错点整理，包含参考答案。", file: "samples/resource-equation.html", format: "HTML" },
+    { id: "reading", title: "阅读观察记录单", type: "作业设计", grade: "二年级", term: "下册", textbook: "统编版", image: "assets/grade.png", task: "prep", intro: "记录阅读中的人物、事件与感受，可作为课堂交流的素材。", file: "samples/resource-reading.html", format: "HTML" },
+    { id: "exploration", title: "科学探究活动设计", type: "教学设计", grade: "高中", term: "下册", textbook: "统编版", image: "assets/prep.png", task: "prep", intro: "从提出问题到记录观察，组织可讨论、可复盘的探究活动。", file: "samples/resource-exploration.html", format: "HTML" }
+  ].map((r, i) => ({ ...r, author: "教学资源样例", date: "2026-10-" + String(13 - i).padStart(2, "0") }));
+  d.notices = [
+    { id: "digital", title: "教师数字素养实践活动通知样例", region: "全国", summary: "展示参赛对象、作品类型与材料提交要求的通知排版。" },
+    { id: "integration", title: "信息技术与教学融合课例通知样例", region: "河北", summary: "展示教学课例、课堂实践与说明材料的通知结构。" },
+    { id: "micro", title: "教师微课作品征集通知样例", region: "广东", summary: "展示微课选题、视频材料和作品说明的栏目。" },
+    { id: "assignment", title: "作业设计交流活动通知样例", region: "浙江", summary: "展示单元作业设计、评价说明和提交清单。" },
+    { id: "ai", title: "人工智能教学应用案例通知样例", region: "四川", summary: "展示课堂应用情境、实践过程与成果说明。" },
+    { id: "lesson", title: "教学设计与课堂展示通知样例", region: "北京", summary: "展示教学设计材料、课堂展示及附件入口。" }
+  ].map((n, i) => ({
+    ...n, date: "2026-10-" + String(13 - i).padStart(2, "0"), publisher: "通知发布单位（样例）",
+    image: "assets/notice-" + n.id + ".png", file: "samples/notice-" + n.id + ".html",
+    sections: [
+      { title: "活动对象", text: "本栏目展示教师比赛通知的正文组织方式。实际参赛对象以将来上传的正式通知为准。" },
+      { title: "作品与材料", text: "可在此展示作品类别、材料清单、格式要求和报送方式，并附正式文件。" },
+      { title: "时间安排", text: "本样例未设报名或截止时间，不构成真实比赛信息。正式通知上传后在此展示时间安排。" },
+      { title: "联系与说明", text: "发布单位、联系方式及具体要求以正式通知为准。本页仅保留通知阅读与附件入口。" }
+    ]
+  }));
+  d.pages.push(
+    { route: "/not-found", title: "未找到内容", group: "公共内容", icon: "FileSearch" },
+    { route: "/resources", title: "资源广场", group: "公共内容", icon: "LibraryBig" },
+    ...d.resources.map(r => ({ route: "/resources/" + r.id, title: r.title, group: "公共内容", icon: "FileText" })),
+    { route: "/notices", title: "全国各地比赛通知", group: "公共内容", icon: "Megaphone" },
+    ...d.notices.map(n => ({ route: "/notices/" + n.id, title: n.title, group: "公共内容", icon: "FileText" }))
+  );
+}());
+
+===== FILE END: v2.2-data.js =====
+
+===== FILE START: v2.3-data.js =====
+(function () {
+  "use strict";
+  const d = window.PrototypeData;
+  const byId = id => d.tasks.find(t => t.id === id);
+  d.version = "2.3";
+  d.prepComposition = ["教学目标（核心素养）", "教学重难点", "学情分析", "教学方法", "教学过程", "课后作业", "教学反思", "自定义"];
+  Object.assign(byId("prep").defaults, {
+    composition: d.prepComposition.slice(0, 7), customComposition: ""
+  });
+  Object.assign(byId("quiz"), {
+    name: "作业设计", short: "作业设计", action: "设计作业", output: "作业与解析",
+    description: "分层作业、题型安排与参考解析", sampleTitle: "一元一次方程 · 作业设计样例"
+  });
+  Object.assign(byId("quiz").defaults, { questionTypes: ["选择", "填空", "主观"], customQuestionType: "" });
+  byId("slides").fields = byId("slides").fields.filter(f => f.key !== "style");
+  Object.assign(byId("slides").defaults, { style: "", customStyle: "" });
+  d.imageStyles = ["不指定", "写实摄影", "儿童绘本", "科学示意", "扁平插画", "国风", "水彩", "像素", "自定义"];
+  d.imageRatios = ["1:1", "3:4", "4:3", "16:9", "9:16", "21:9", "自定义"];
+  d.imageSamples = [
+    { id: "earth", title: "地球 · 科学课堂配图", image: "assets/earth.jpg", format: "JPG", description: "本地地球照片样例，不会根据输入生成新图片。" },
+    { id: "classroom", title: "认识分数 · 页面构图", image: "assets/html.png", format: "PNG", description: "本地课堂页面构图样例，不会根据输入生成新图片。" }
+  ];
+  const additions = [
+    {
+      id: "image", name: "图片生成", short: "图片生成", icon: "ImagePlus", color: "rose",
+      description: "教学配图、画面描述与参考素材", output: "图片样例与参数", action: "查看图片样例",
+      image: "assets/earth.jpg", topic: "科学课堂配图", requirements: "", fields: [],
+      defaults: { prompt: "", ratio: "16:9", customWidth: 16, customHeight: 9, style: "不指定", customStyle: "",
+        negative: "", quality: "中", outputCount: 1, seed: "", referenceNames: [], sampleId: "earth" },
+      sampleTitle: "地球 · 科学课堂配图", sampleMeta: "固定图片样例 · 参数本机保存",
+      sections: [{ id: "image", title: "图片样例", text: "查看本地图片，不调用生成服务。" }, { id: "parameters", title: "填写参数", text: "保留画面描述、风格与参考图名称。" }]
+    },
+    {
+      id: "voice", name: "音频克隆", short: "音频克隆", icon: "AudioLines", color: "teal",
+      description: "声音意向、参考音频与口播文本", output: "音频参数记录", action: "预览音频参数",
+      image: "assets/voice.png", topic: "课堂导入口播", requirements: "", fields: [],
+      defaults: { mode: "design", control: "", targetText: "", referenceText: "", audioName: "", authorized: false,
+        denoise: false, normalizeText: false, guidance: 2, iterations: 10 },
+      sampleTitle: "课堂导入口播 · 参数预览", sampleMeta: "仅参数记录 · 无合成音频",
+      sections: [{ id: "voice", title: "声音设置", text: "记录模式、声音描述与参考音频信息。" }, { id: "text", title: "目标文本", text: "不合成声音，不提供虚假试听结果。" }]
+    }
+  ];
+  d.tasks = ["prep", "image", "quiz", "slides", "html", "voice", "avatar", "video", "grade"].map(id => byId(id) || additions.find(t => t.id === id));
+  d.pages.forEach(p => { p.title = p.title.replaceAll("练习出题", "作业设计"); });
+  additions.forEach(t => {
+    d.pages.push({ route: "/tool/" + t.id, title: t.name + " · 填写", group: "任务流程", icon: t.icon });
+    d.pages.push({ route: "/result/" + t.id, title: t.name + " · 结果", group: "任务流程", icon: "FileText" });
+  });
+  d.courses.forEach(c => { if (c.task === "quiz") { c.category = "作业设计"; c.name = "一份作业怎样安排题型与层次"; } });
+  d.samples.forEach(w => { if (w.task === "quiz") w.title = "一元一次方程 · 作业设计样例"; });
+  d.styleOptions = function (form) {
+    const stageThemes = {
+      "幼儿园": ["绘本情境", "角色互动", "实物观察", "游戏探究", "图像表达", "生活回顾"],
+      "小学": ["情境讲解", "课堂互动", "图解观察", "任务探究", "故事表达", "练习复习"],
+      "初中": ["概念讲解", "问题讨论", "证据图解", "探究任务", "结构梳理", "专题复习"],
+      "高中": ["专题讲解", "思辨讨论", "模型图解", "研究任务", "体系建构", "综合复习"]
+    };
+    const subjects = {
+      "语文": "文本品读", "语言": "语言表达", "英语": "语言情境", "数学": "数学思维",
+      "科学": "科学观察", "物理": "物理建模", "化学": "化学探究", "生物": "生命观察",
+      "历史": "史料研读", "地理": "地图探究", "音乐": "音乐感知", "美术": "美术欣赏",
+      "体育": "运动示范", "健康": "健康生活", "社会": "社会情境", "艺术": "艺术体验",
+      "劳动": "劳动实践", "主题班会": "班级成长", "道德与法治": "法治情境", "思想政治": "议题研学",
+      "信息科技": "数字探究", "信息技术": "数字实践", "通用技术": "技术设计"
+    };
+    const subject = form.subject === "其他" ? (form.subjectOther.trim() || "综合学习") : (subjects[form.subject] || form.subject);
+    return (stageThemes[form.stage] || stageThemes["小学"]).map(title => form.grade + " · " + subject + " · " + title);
+  };
+  const guides = {
+    prep: [
+      ["教学范围与目标", "选择学段、年级和学科，再填写课题。教学目标应对应所选学科的核心素养及可观察的学习表现，不必把所有维度平均罗列。\n示例：学生能结合两个动作描写，用文本证据解释人物情感。"],
+      ["课时与内容组成", "选择课时长度，也可按分钟或课时自定义。按需要勾选教学目标、重难点、学情、方法、过程、作业和反思；自定义可补充评价量规等内容。"],
+      ["补充要求与复核", "补充学生已有基础、活动限制和评价方式。润色只提供本地建议稿，采用前可修改。\n结果是固定样稿，请核对目标、活动与评价是否一致。"]
+    ],
+    image: [
+      ["描述教学画面", "先写教学用途、主体、环境和构图，再写风格与排除内容。\n示例：小学科学课配图，地球全景，海洋与陆地边界清晰，画面不含文字与水印。"],
+      ["比例、风格与参考图", "课堂大屏可选 16:9，竖版学习单可选 3:4。自定义比例填正数宽高。\n参考图支持 JPG、PNG、WebP，最多 10 张，每张 10 MB。只在本机预览，不识别图中内容。"],
+      ["查看样例与保存", "查看样例后可放大和下载实际图片，右侧记录可恢复填写参数。记录留在本版浏览器，不限 24 小时。\n当前不会生成新图片。参考图不随参数永久保存，刷新或恢复记录后需重新选择。"]
+    ],
+    quiz: [
+      ["范围与题型", "选择教学范围、知识点、题目数量与难度。选择、填空、判断用于不同检测任务，主观题观察过程与表达。自定义可写连线、排序、实验设计等题型。"],
+      ["配图与答案", "按内容决定是否配图及数量，再选择答案与解析。配图应帮助理解，不作为无关装饰。\n示例：方程作业包含基础运算、情境应用和错例分析，解析说明移项依据。"],
+      ["检查后再布置", "结果是固定作业样稿，不会按题型或数量真实生成。布置前独立核算答案，检查歧义、学生负担与层次。"]
+    ],
+    slides: [
+      ["确定页面任务", "先选择教学范围和课题，再确定页数。每页围绕一个问题，教师讲稿不应全部放上屏幕。"],
+      ["选择课件风格", "风格随学段、年级和学科推荐，至少六种；自定义可描述颜色、字号、图片比例和课堂节奏。\n示例：五年级科学，白底图解，观察照片为主，关键概念少量强调。"],
+      ["核对内容样稿", "补充互动与讲解要求，查看页面内容样例。风格选择只记录参数，当前不会重新设计样稿。\n下载格式为实际 HTML 内容样稿，不是 PPTX。"]
+    ],
+    html: [
+      ["知识点与网页类型", "选择教学范围并填写知识点，再选择教学动画、游戏、互动课件、测验或实验探究。"],
+      ["设计互动反馈", "确定互动形式、难度、提示与反馈。补充要求可以写允许重试、逐步引导、解释原因。\n示例：三年级分数选择题，错误时指出分母的含义，允许重新作答。"],
+      ["预览与下载", "结果提供固定的认识分数互动样例。可操作答题并下载真实 HTML，双击打开。\n输入不同知识点不会产生新的互动网页。"]
+    ],
+    voice: [
+      ["选择声音模式", "声音设计无需音频，描述声音年龄感、语气和节奏；可控克隆需要授权参考音频，可补充声音描述；精细克隆还需人工填写参考音频文本，声音描述暂不参与。"],
+      ["音频与目标文本", "上传本人或已授权的 WAV、MP3、M4A、OGG，最大 20 MB；可试听参考音频。目标文本填写需要朗读的内容。\n声音描述示例：自然清晰的成年女声，语速适中，提问时稍作停顿。\n目标文本示例：同学们，先观察这张图片。你看到了哪些变化？"],
+      ["高级参数与边界", "高级设置记录降噪、文本规范化、引导强度和迭代步数，当前不执行音频处理。\n参考音频播放器不是合成结果；预览只展示参数，可导出 JSON。刷新后需重新选择音频，不能凭文件名通过克隆输入检查。"]
+    ],
+    avatar: [
+      ["准备讲稿", "填写主题与口播讲稿，句子尽量短。讲稿可按自然停顿分句，方便检查字幕。"],
+      ["形象与画幅", "选择示例形象、声音意向和横竖画幅。照片只用于构图，不代表已取得人物或声音使用授权。"],
+      ["检查字幕构图", "结果可逐句查看字幕位置，确保不遮挡面部。当前无语音合成、口型驱动或视频文件。"]
+    ],
+    video: [
+      ["描述镜头", "填写主题和画面描述，明确主体、运动与时长。\n示例：地球全景，缓慢靠近海洋与陆地交界，适合作为科学课导入。"],
+      ["参考图与画幅", "可选择一张 10 MB 以内的参考图，使用合适的画幅。图片仅在本机预览，刷新后需重新选择。"],
+      ["查看分镜", "结果为固定图片的不同取景与镜头说明，不是视频的真实帧。无视频生成、声音或 MP4 下载。"]
+    ],
+    grade: [
+      ["输入作业", "选择图片或文字输入。图片最多 10 张，每张 10 MB；文字可粘贴题目与学生作答。先移除学生姓名等不必要的个人信息。"],
+      ["设置批改规则", "选择教学范围、严格程度、评语语气与模糊字处理。评分开启后可设置满分与扣分，并补充参考答案。"],
+      ["教师复核", "结果中的反馈为固定样例，没有识别或批改提交的作业。正式反馈应由教师复核，建议应说明改哪里、怎样改。"]
+    ]
+  };
+  d.toolTutorials = Object.fromEntries(d.tasks.map(t => [t.id, {
+    title: t.name + "使用教程", chapters: guides[t.id].map(([title, body]) => ({ title, body }))
+  }]));
+  d.tasks.forEach(t => {
+    let course = d.courses.find(c => c.task === t.id);
+    if (!course) {
+      course = { id: "tool-" + t.id, name: t.name + "使用教程", category: t.name, task: t.id, minutes: "3 分钟", image: t.image, intro: t.description, chapters: d.toolTutorials[t.id].chapters };
+      d.courses.push(course);
+      d.pages.push({ route: "/course/" + course.id, title: course.name, group: "学习", icon: "BookOpen" });
+    }
+    course.chapters = d.toolTutorials[t.id].chapters;
+    const page = d.pages.find(p => p.route === "/course/" + course.id);
+    if (page) page.title = course.name;
+  });
+  d.courses.sort((a, b) => d.tasks.findIndex(t => t.id === a.task) - d.tasks.findIndex(t => t.id === b.task));
+  d.messages = [
+    { id: "notice-guide", tab: "notice", title: "九项教学工具已加入工作台", date: "2026-10-13", body: "图片生成和音频克隆入口已加入，练习出题更名为作业设计。可从工作台、工具侧栏或首页进入对应工具。", sample: true },
+    { id: "notice-review", tab: "notice", title: "导航居中与 UI 美化交接", date: "2026-10-16", body: "用户已确认原 33 条批注均已修改。本次只调整顶部导航位置；历史批注保留原始记录，不自动改写状态。浏览器中的新意见仍需单独导出 JSON。", sample: true },
+    { id: "announcement-local", tab: "announcement", title: "本地原型服务边界", date: "2026-10-13", body: "本版只提供本地页面和固定样例，不接真实图片生成、音频克隆、账号、支付或比赛发布后台。上传素材只在浏览器本机预览。\n比赛栏目为全国各地比赛通知，真实通知以后由后台维护。", sample: true }
+  ];
+}());
+
+===== FILE END: v2.3-data.js =====
+
+===== FILE START: 版本标识.json =====
+{
+  "projectId": "teacher-workspace-review",
+  "versionId": "v2.3.1-20261016",
+  "displayVersion": "V2.3.1",
+  "date": "2026-10-16",
+  "timezone": "Asia/Shanghai",
+  "parentVersion": "v2.3-20261013",
+  "purpose": "顶部导航居中与 Gemini UI 美化源码交接",
+  "entry": "打开原型.html",
+  "defaultRoute": "/welcome",
+  "annotationSchema": "teacher-review-notes/1",
+  "annotationStoragePrefix": "teacher-workspace.v2.3.1-20261016.",
+  "carriedNotes": 33,
+  "userConfirmation": {
+    "date": "2026-10-16",
+    "statement": "33 条批注均已经修改。",
+    "scope": "记录用户本次确认，不改写历史批注原文、状态或处理记录"
+  },
+  "pages": 51,
+  "tools": 9,
+  "courses": 9,
+  "resourceSamples": 6,
+  "noticeSamples": 6,
+  "admin": false,
+  "backend": false,
+  "automatedTestsRun": false,
+  "browserInteractionTestsRun": false,
+  "screenshotSweepRun": false,
+  "countsInheritedFromParent": true,
+  "reviewStatus": "用户确认原 33 条批注均已修改；导航居中修订待查看，非正式上线验收",
+  "previousVersionArchiveStatus": "V2.1 仍未生成冻结快照、ZIP 及指纹清单，本轮不补做"
+}
+
+===== FILE END: 版本标识.json =====
